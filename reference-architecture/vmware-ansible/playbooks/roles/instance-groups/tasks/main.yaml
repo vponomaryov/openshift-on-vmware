@@ -39,7 +39,7 @@
     openshift_hostname: "{{ hostvars[item].inventory_hostname }}"
     openshift_node_labels:
       role: infra
-  with_items: "{{ groups[cluster_id + '-infra'] }}"
+  with_items: "{{ groups[cluster_id + '-infra'] | default([]) }}"
 
 - name: Add app instances to host group
   add_host:
@@ -65,13 +65,13 @@
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes
-  with_items: "{{ groups[cluster_id + '-networkfs'] }}"
+  with_items: "{{ groups[cluster_id + '-networkfs'] | default([]) }}"
 
 - name: Add loadbalancer instances to allnodes
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes
-  with_items: "{{ groups[cluster_id + '-loadbalancer'] }}"
+  with_items: "{{ groups[cluster_id + '-loadbalancer'] | default([]) }}"
 
 - name: Add cns instances to allnodes
   add_host:

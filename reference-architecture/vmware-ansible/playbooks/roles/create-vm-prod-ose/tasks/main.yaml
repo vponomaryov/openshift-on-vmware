@@ -1,15 +1,46 @@
 ---
-- name: Assign app memory for container_storage
+- name: Define DHCP network parameters per node
   set_fact:
-    app_memory: 32768
-  when: "'cns' in container_storage"
+    network_parameters: "{{ network_parameters | default({}) |
+                            combine({item.value.guestname: {
+                                'name': vm_network,
+                                'type': vm_ipaddr_allocation_type,
+                                'gateway': vm_gw}}, recursive=True) }}"
+  with_dict: "{{ host_inventory }}"
 
-- name: Assign app memory for container_storage
+- name: Define static network parameters per node
   set_fact:
-    app_memory: 8192
-  when: "'cns' not in container_storage"
+    network_parameters: "{{ network_parameters |
+                            combine({item.value.guestname: {
+                                'ip': item.value.ip4addr,
+                                'netmask': vm_netmask}}, recursive=True) }}"
+  with_dict: "{{ host_inventory }}"
+  when: "'static' == vm_ipaddr_allocation_type"
 
-- name: Create production master node VMs on vCenter
+- name: Define memory and disk parameters per node type
+  set_fact:
+    host_data:
+      master:
+        memory: 16384
+        disk:
+        - {'size_gb': 60, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+      app:
+        memory: "{{ ('cns' in container_storage) | ternary(32768, 8192) }}"
+        disk:
+        - {'size_gb': 60, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+      infra:
+        memory: 8192
+        disk:
+        - {'size_gb': 60, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
+
+- name: Create production VMs on vCenter
   vmware_guest:
     hostname: "{{ vcenter_host }}"
     username: "{{ vcenter_username }}"
@@ -24,118 +55,34 @@
     wait_for_ip_address: true
     folder: "/{{ vcenter_folder }}"
     annotation: "{{ item.value.tag }}"
-    disk:
-    - size_gb: 60
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
+    disk: "{{ host_data[item.value.guesttype].disk }}"
     hardware:
-      memory_mb: 16384
-    networks:
-    - name: "{{ vm_network }}"
-      ip: "{{ item.value.ip4addr }}"
-      netmask: "{{ vm_netmask }}"
-      gateway: "{{ vm_gw }}"
+      memory_mb: "{{ host_data[item.value.guesttype].memory }}"
+    networks: "[ {{ network_parameters[item.value.guestname] }} ]"
     customization:
       domain: "{{dns_zone}}"
       dns_servers:
       - "{{ vm_dns }}"
-      dns_suffix: "{{dns_zone}}"
-      hostname: "{{ item.value.guestname}}"
-  with_dict: "{{host_inventory}}"
-  when: "'master' in item.value.guestname"
+      dns_suffix: "{{ dns_zone }}"
+      hostname: "{{ item.value.guestname }}"
+  with_dict: "{{ host_inventory }}"
+  when: "item.value.guesttype in ['app', 'master', 'infra']"
+  register: facts
 
-- name: Create production infra node VMs on vCenter
-  vmware_guest:
-    hostname: "{{ vcenter_host }}"
-    username: "{{ vcenter_username }}"
-    password: "{{ vcenter_password }}"
-    validate_certs: False
-    name: "{{ item.value.guestname }}"
-    cluster: "{{ vcenter_cluster}}"
-    datacenter: "{{ vcenter_datacenter }}"
-    resource_pool: "{{ vcenter_resource_pool }}"
-    template: "{{vcenter_template_name}}"
-    state: poweredon
-    wait_for_ip_address: true
-    disk:
-    - size_gb: 60
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    folder: "/{{ vcenter_folder }}"
-    annotation: "{{ item.value.tag }}"
-    hardware:
-      memory_mb: 8192
-    networks:
-    - name: "{{ vm_network }}"
-      ip: "{{ item.value.ip4addr }}"
-      netmask: "{{ vm_netmask }}"
-      gateway: "{{ vm_gw }}"
-    customization:
-      domain: "{{dns_zone}}"
-      dns_servers:
-      - "{{ vm_dns }}"
-      dns_suffix: "{{dns_zone}}"
-      hostname: "{{ item.value.guestname}}"
-  with_dict: "{{host_inventory}}"
-  when: "'infra' in item.value.guestname"
-
-- name: Create production app node VMs on vCenter
-  vmware_guest:
-    hostname: "{{ vcenter_host }}"
-    username: "{{ vcenter_username }}"
-    password: "{{ vcenter_password }}"
-    validate_certs: False
-    name: "{{ item.value.guestname }}"
-    cluster: "{{ vcenter_cluster}}"
-    datacenter: "{{ vcenter_datacenter }}"
-    resource_pool: "{{ vcenter_resource_pool }}"
-    template: "{{vcenter_template_name}}"
-    state: poweredon
-    wait_for_ip_address: true
-    disk:
-    - size_gb: 60
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    folder: "/{{ vcenter_folder }}"
-    annotation: "{{ item.value.tag }}"
-    hardware:
-      memory_mb: "{{ app_memory }}"
-    networks:
-    - name: "{{ vm_network }}"
-      ip: "{{ item.value.ip4addr }}"
-      netmask: "{{ vm_netmask }}"
-      gateway: "{{ vm_gw }}"
-    customization:
-      domain: "{{dns_zone}}"
-      dns_servers:
-      - "{{ vm_dns }}"
-      dns_suffix: "{{dns_zone}}"
-      hostname: "{{ item.value.guestname}}"
-  with_dict: "{{host_inventory}}"
-  when: "'app' in item.value.guestname"
+- name: Map node names and their IP addresses
+  set_fact:
+    ip4addrs: "{{ ip4addrs | default({}) | combine(
+                      {item.item.value.guestname: (
+                           item.instance.hw_eth0.ipaddresses | ipv4 | first)},
+                      recursive=True) }}"
+  with_items: "{{ facts.results }}"
+  when: "item.item.value.guesttype in ['app', 'master', 'infra']"
 
 - name: Add production VMs to inventory
-  add_host: hostname="{{ item.value.guestname }}" ansible_fqdn="{{ item.value.guestname }}.{{ dns_zone }}" ansible_ssh_host="{{ item.value.ip4addr }}" groups="{{ item.value.tag }}, production_group"
-  with_dict: "{{host_inventory}}"
-  when: "'master' in item.value.guestname or 'app' in item.value.guestname or 'infra' in item.value.guestname"
+  add_host:
+    hostname: "{{ item.value.guestname }}"
+    ansible_fqdn: "{{ item.value.guestname }}.{{ dns_zone }}"
+    ansible_ssh_host: "{{ ip4addrs[item.value.guestname] }}"
+    groups: "{{ item.value.tag }}, production_group"
+  with_dict: "{{ host_inventory }}"
+  when: "item.value.guesttype in ['app', 'master', 'infra']"

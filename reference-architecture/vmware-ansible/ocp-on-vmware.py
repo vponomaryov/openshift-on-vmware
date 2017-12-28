@@ -64,6 +64,7 @@ class VMwareOnOCP(object):
     inventory_file='infrastructure.json'
     vmware_ini_path=None
     clean=None
+    vm_ipaddr_allocation_type=None,
 
     def __init__(self, load=True):
         if load:
@@ -173,6 +174,8 @@ class VMwareOnOCP(object):
                 print "app_nodes=3"
             elif line.startswith("vm_ipaddr_start="):
                 print "vm_ipaddr_start="
+            elif line.startswith("vm_ipaddr_allocation_type="):
+                print "vm_ipaddr_allocation_type="
             elif line.startswith("ldap_user_password="):
                 print "ldap_user_password="
             elif line.startswith("ldap_fqdn="):
@@ -231,6 +234,7 @@ class VMwareOnOCP(object):
             'vcenter_resource_pool':'/Resources/OCP3',
             'app_dns_prefix':'apps',
             'vm_network':'VM Network',
+            'vm_ipaddr_allocation_type': 'static',
             'rhel_subscription_pool':'Red Hat OpenShift Container Platform, Premium*',
             'openshift_sdn':'redhat/openshift-ovs-subnet',
             'byo_lb':'False',
@@ -284,6 +288,7 @@ class VMwareOnOCP(object):
         self.vm_gw = config.get('vmware', 'vm_gw')
         self.vm_netmask = config.get('vmware', 'vm_netmask')
         self.vm_network = config.get('vmware', 'vm_network')
+        self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
         self.rhel_subscription_user = config.get('vmware', 'rhel_subscription_user')
         self.rhel_subscription_pass = config.get('vmware', 'rhel_subscription_pass')
         self.rhel_subscription_server = config.get('vmware', 'rhel_subscription_server')
@@ -303,6 +308,7 @@ class VMwareOnOCP(object):
         self.app_nodes = config.get('vmware', 'app_nodes')
         self.storage_nodes = config.get('vmware', 'storage_nodes')
         self.vm_ipaddr_start = config.get('vmware', 'vm_ipaddr_start')
+        self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
         self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix')
         self.auth_type = config.get('vmware', 'auth_type')
         self.ldap_user = config.get('vmware', 'ldap_user')
@@ -310,12 +316,29 @@ class VMwareOnOCP(object):
         self.ldap_fqdn = config.get('vmware', 'ldap_fqdn')
         err_count=0
 
-        required_vars = {'dns_zone':self.dns_zone, 'vcenter_host':self.vcenter_host, 'vcenter_password':self.vcenter_password, 'vm_ipaddr_start':self.vm_ipaddr_start, 'ldap_fqdn':self.ldap_fqdn, 'ldap_user_password':self.ldap_user_password, 'vm_dns':self.vm_dns, 'vm_gw':self.vm_gw, 'vm_netmask':self.vm_netmask, 'vcenter_datacenter':self.vcenter_datacenter}
+        required_vars = {
+            'dns_zone': self.dns_zone,
+            'vcenter_host': self.vcenter_host,
+            'vcenter_password': self.vcenter_password,
+            'vm_ipaddr_start': self.vm_ipaddr_start,
+            'vm_ipaddr_allocation_type': self.vm_ipaddr_allocation_type,
+            'ldap_fqdn': self.ldap_fqdn,
+            'ldap_user_password': self.ldap_user_password,
+            'vm_dns': self.vm_dns,
+            'vm_gw': self.vm_gw,
+            'vm_netmask': self.vm_netmask,
+            'vcenter_datacenter': self.vcenter_datacenter,
+        }
 
         for k, v in required_vars.items():
             if v == '':
                 err_count += 1
                 print "Missing %s " % k
+        if required_vars['vm_ipaddr_allocation_type'] not in ('dhcp', 'static'):
+            err_count += 1
+            print ("'vm_ipaddr_allocation_type' can take only "
+                   "'dhcp' and 'static' values.")
+
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  self.vmware_ini_path
             exit (1)
@@ -356,6 +379,7 @@ class VMwareOnOCP(object):
         if self.byo_lb == "False":
             click.echo('\tlb_host: %s' % self.lb_host)
         click.echo('\tvm_ipaddr_start: %s' % self.vm_ipaddr_start)
+        click.echo('\tvm_ipaddr_allocation_type: %s' % self.vm_ipaddr_allocation_type)
         click.echo('\tUsing values from: %s' % self.vmware_ini_path)
         click.echo("")
         if not self.no_confirm:
@@ -391,12 +415,15 @@ class VMwareOnOCP(object):
                 nfs_entry=self.nfs_host
             d['host_inventory'][nfs_entry] = {}
             d['host_inventory'][nfs_entry]['guestname'] = nfs_entry
+            d['host_inventory'][nfs_entry]['guesttype'] = 'nfs'
+            d['host_inventory'][nfs_entry]['vm_ipaddr_allocation_type'] = (
+                self.vm_ipaddr_allocation_type)
             d['host_inventory'][nfs_entry]['ip4addr'] = ip4addr[0]
             d['host_inventory'][nfs_entry]['tag'] = str(self.cluster_id) + "-networkfs"
             bind_entry.append(nfs_entry + "\t\tA\t" + ip4addr[0])
             del ip4addr[0]
 
-        if self.byo_lb == "False":
+        if self.byo_lb == "False" and int(self.master_nodes) > 1:
             if self.lb_ha_ip:
                 bind_entry.append(self.lb_ha_ip + "\t\tA\t" + wild_ip)
                 i = 2
@@ -409,6 +436,9 @@ class VMwareOnOCP(object):
                     lb_name="haproxy-"+str(i)
                 d['host_inventory'][lb_name] = {}
                 d['host_inventory'][lb_name]['guestname'] = lb_name
+                d['host_inventory'][lb_name]['guesttype'] = 'haproxy'
+                d['host_inventory'][lb_name]['vm_ipaddr_allocation_type'] = (
+                self.vm_ipaddr_allocation_type)
                 if not self.lb_ha_ip:
                     d['host_inventory'][lb_name]['ip4addr'] = wild_ip
                     bind_entry.append(lb_name + "\tA\t" + wild_ip)
@@ -425,6 +455,9 @@ class VMwareOnOCP(object):
                 master_name="master-"+str(i)
             d['host_inventory'][master_name] = {}
             d['host_inventory'][master_name]['guestname'] = master_name
+            d['host_inventory'][master_name]['guesttype'] = 'master'
+            d['host_inventory'][master_name]['vm_ipaddr_allocation_type'] = (
+                self.vm_ipaddr_allocation_type)
             d['host_inventory'][master_name]['ip4addr'] = ip4addr[0]
             d['host_inventory'][master_name]['tag'] = str(self.cluster_id) + '-master'
             bind_entry.append(master_name + "\tA\t" + ip4addr[0])
@@ -437,6 +470,9 @@ class VMwareOnOCP(object):
                 app_name="app-"+str(i)
             d['host_inventory'][app_name] = {}
             d['host_inventory'][app_name]['guestname'] = app_name
+            d['host_inventory'][app_name]['guesttype'] = 'app'
+            d['host_inventory'][app_name]['vm_ipaddr_allocation_type'] = (
+                self.vm_ipaddr_allocation_type)
             d['host_inventory'][app_name]['ip4addr'] = ip4addr[0]
             d['host_inventory'][app_name]['tag'] = str(self.cluster_id) + '-app'
             bind_entry.append(app_name + "\t\tA\t" + ip4addr[0])
@@ -449,6 +485,9 @@ class VMwareOnOCP(object):
                 infra_name="infra-"+str(i)
             d['host_inventory'][infra_name] = {}
             d['host_inventory'][infra_name]['guestname'] = infra_name
+            d['host_inventory'][infra_name]['guesttype'] = 'infra'
+            d['host_inventory'][infra_name]['vm_ipaddr_allocation_type'] = (
+                self.vm_ipaddr_allocation_type)
             d['host_inventory'][infra_name]['ip4addr'] = ip4addr[0]
             d['host_inventory'][infra_name]['tag'] = str(self.cluster_id) + '-infra'
             bind_entry.append(infra_name + "\t\tA\t" + ip4addr[0])
@@ -643,6 +682,7 @@ class VMwareOnOCP(object):
             vm_gw=%s \
             vm_netmask=%s \
             vm_network=%s \
+            vm_ipaddr_allocation_type=%s \
             wildcard_zone=%s \
             console_port=%s \
             cluster_id=%s \
@@ -678,6 +718,7 @@ class VMwareOnOCP(object):
                             self.vm_gw,
                             self.vm_netmask,
                             self.vm_network,
+                            self.vm_ipaddr_allocation_type,
                             self.wildcard_zone,
                             self.console_port,
                             self.cluster_id,

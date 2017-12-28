@@ -1,17 +1,40 @@
 ---
+- name: Pick up host from host_inventory
+  set_fact:
+    host_data: "{{ item }}"
+  with_dict: "{{ host_inventory }}"
+  when: "'haproxy' == item.value.guesttype"
+
+- name: Define parameters for DHCP network
+  set_fact:
+    network_parameters:
+    - name: "{{ vm_network }}"
+      type: "{{ vm_ipaddr_allocation_type }}"
+      gateway: "{{ vm_gw }}"
+  when: host_data | default({})
+
+- name: Define parameters for static network
+  set_fact:
+    network_parameters: "{{ [network_parameters[0] |
+                             combine({'ip': host_data.value.ip4addr,
+                                      'netmask': vm_netmask})] }}"
+  when:
+  - "'static' == vm_ipaddr_allocation_type"
+  - host_data | default({})
+
 - name: Create haproxy VM on vCenter
   vmware_guest:
     hostname: "{{ vcenter_host }}"
     username: "{{ vcenter_username }}"
     password: "{{ vcenter_password }}"
     validate_certs: False
-    name: "{{ item.value.guestname }}"
+    name: "{{ host_data.value.guestname }}"
     cluster: "{{ vcenter_cluster}}"
     datacenter: "{{ vcenter_datacenter }}"
     resource_pool: "{{ vcenter_resource_pool }}"
     template: "{{vcenter_template_name}}"
     folder: "/{{ vcenter_folder }}"
-    annotation: "{{ item.value.tag }}"
+    annotation: "{{ host_data.value.tag }}"
     state: poweredon
     wait_for_ip_address: true
     disk:
@@ -24,21 +47,19 @@
     - size_gb: 40
       datastore: "{{ vcenter_datastore }}"
       type: thin
-    networks:
-    - name: "{{ vm_network }}"
-      ip: "{{ item.value.ip4addr }}"
-      netmask: "{{ vm_netmask }}"
-      gateway: "{{ vm_gw }}"
+    networks: "{{ network_parameters }}"
     customization:
       domain: "{{dns_zone}}"
       dns_servers:
       - "{{ vm_dns }}"
       dns_suffix: "{{dns_zone}}"
-      hostname: "{{ item.value.guestname}}"
-  with_dict: "{{host_inventory}}"
-  when: "'haproxy' in item.value.guestname"
+      hostname: "{{ host_data.value.guestname}}"
+  register: facts
+  when: host_data | default({})
 
 - name: Add haproxy server to inventory
-  add_host: hostname="{{ item.value.guestname}}" ansible_ssh_host="{{ item.value.ip4addr }}" groups="{{ item.value.tag }}, haproxy_group"
-  with_dict: "{{ host_inventory }}"
-  when: "'haproxy' in item.value.guestname"
+  add_host:
+    hostname: "{{ host_data.value.guestname }}"
+    ansible_ssh_host: "{{ facts.instance.hw_eth0.ipaddresses | ipv4 | first }}"
+    groups: "{{ host_data.value.tag }}, haproxy_group"
+  when: host_data | default({})
