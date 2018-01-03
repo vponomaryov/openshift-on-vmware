@@ -311,7 +311,7 @@ class VMwareOnOCP(object):
         self.storage_nodes = config.get('vmware', 'storage_nodes')
         self.vm_ipaddr_start = config.get('vmware', 'vm_ipaddr_start')
         self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
-        self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix')
+        self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix') or ''
         self.auth_type = config.get('vmware', 'auth_type')
         self.ldap_user = config.get('vmware', 'ldap_user')
         self.ldap_user_password = config.get('vmware', 'ldap_user_password')
@@ -410,11 +410,11 @@ class VMwareOnOCP(object):
         d = {}
         d['host_inventory'] = {}
 
-        if self.byo_nfs == "False":
+        if self.byo_nfs == "False" and False:
             if self.ocp_hostname_prefix not in self.nfs_host:
-                nfs_entry=self.ocp_hostname_prefix+self.nfs_host
+                nfs_entry = "%s-%s" % (self.ocp_hostname_prefix, self.nfs_host)
             else:
-                nfs_entry=self.nfs_host
+                nfs_entry = self.nfs_host
             d['host_inventory'][nfs_entry] = {}
             d['host_inventory'][nfs_entry]['guestname'] = nfs_entry
             d['host_inventory'][nfs_entry]['guesttype'] = 'nfs'
@@ -432,10 +432,7 @@ class VMwareOnOCP(object):
             else:
                 i = 1
             for i in range(0, int(i)):
-                if self.ocp_hostname_prefix is not None:
-                    lb_name=self.ocp_hostname_prefix+"haproxy-"+str(i)
-                else:
-                    lb_name="haproxy-"+str(i)
+                lb_name = "%s-haproxy-%d" % (self.ocp_hostname_prefix, i)
                 d['host_inventory'][lb_name] = {}
                 d['host_inventory'][lb_name]['guestname'] = lb_name
                 d['host_inventory'][lb_name]['guesttype'] = 'haproxy'
@@ -451,10 +448,7 @@ class VMwareOnOCP(object):
                 d['host_inventory'][lb_name]['tag'] =  str(self.cluster_id) + "-loadbalancer"
 
         for i in range(0, int(self.master_nodes)):
-            if self.ocp_hostname_prefix is not None:
-                master_name=self.ocp_hostname_prefix+"master-"+str(i)
-            else:
-                master_name="master-"+str(i)
+            master_name = "%s-master-%d" % (self.ocp_hostname_prefix, i)
             d['host_inventory'][master_name] = {}
             d['host_inventory'][master_name]['guestname'] = master_name
             d['host_inventory'][master_name]['guesttype'] = 'master'
@@ -466,10 +460,7 @@ class VMwareOnOCP(object):
             del ip4addr[0]
 
         for i in range(0, int(self.app_nodes)):
-            if self.ocp_hostname_prefix is not None:
-                app_name=self.ocp_hostname_prefix+"app-"+str(i)
-            else:
-                app_name="app-"+str(i)
+            app_name = "%s-app-%d" % (self.ocp_hostname_prefix, i)
             d['host_inventory'][app_name] = {}
             d['host_inventory'][app_name]['guestname'] = app_name
             d['host_inventory'][app_name]['guesttype'] = 'app'
@@ -481,10 +472,7 @@ class VMwareOnOCP(object):
             del ip4addr[0]
 
         for i in range(0, int(self.infra_nodes)):
-            if self.ocp_hostname_prefix is not None:
-                infra_name=self.ocp_hostname_prefix+"infra-"+str(i)
-            else:
-                infra_name="infra-"+str(i)
+            infra_name = "%s-infra-%d" % (self.ocp_hostname_prefix, i)
             d['host_inventory'][infra_name] = {}
             d['host_inventory'][infra_name]['guestname'] = infra_name
             d['host_inventory'][infra_name]['guesttype'] = 'infra'
@@ -522,15 +510,48 @@ class VMwareOnOCP(object):
         if not self.no_confirm:
             click.confirm('Continue using these values?', abort=True)
 
-        if self.auth_type == 'none':
-            playbooks = ["playbooks/ocp-install.yaml", "playbooks/minor-update.yaml"]
-            for ocp_file in playbooks:
-                for line in fileinput.input(ocp_file, inplace=True):
-                    if line.startswith('#openshift_master_identity_providers:'):
-                        line = line.replace('#', '    ')
-                        print line
+        install_file = "playbooks/ocp-install.yaml"
+
+        for line in fileinput.input(install_file, inplace=True):
+            if line.startswith("    openshift_hosted_registry_storage_host:"):
+                print ("    openshift_hosted_registry_storage_host: " +
+                       self.nfs_host + "." + self.dns_zone)
+            elif line.startswith("    openshift_hosted_registry_storage_nfs_directory:"):
+                print ("    openshift_hosted_registry_storage_nfs_directory: " +
+                       self.nfs_registry_mountpoint)
+            elif line.startswith("    openshift_hosted_metrics_storage_host:"):
+                print ("    openshift_hosted_metrics_storage_host: " +
+                       self.nfs_host + "." + self.dns_zone)
+            elif line.startswith("    openshift_hosted_metrics_storage_nfs_directory:"):
+                print ("    openshift_hosted_metrics_storage_nfs_directory: " +
+                       self.nfs_registry_mountpoint)
+            else:
+                print line,
+
+        update_file = "playbooks/minor-update.yaml"
+        for ocp_file in ("playbooks/ocp-install.yaml", "playbooks/minor-update.yaml"):
+            for line in fileinput.input(ocp_file, inplace=True):
+                if line.startswith("    wildcard_zone:"):
+                    print ("    wildcard_zone: " + self.app_dns_prefix + "." +
+                           self.dns_zone)
+                elif line.startswith("    load_balancer_hostname:"):
+                    if int(self.master_nodes) > 1:
+                        lb_url = self.lb_host
                     else:
-                        print line,
+                        lb_url = '%s-master-0' % self.ocp_hostname_prefix
+                    print "    load_balancer_hostname: " + lb_url
+                elif line.startswith("    deployment_type:"):
+                    print "    deployment_type: " + self.deployment_type
+                else:
+                    print line,
+
+        if self.auth_type == 'none':
+            for line in fileinput.input(install_file, inplace=True):
+                if line.startswith('#openshift_master_identity_providers:'):
+                    line = line.replace('#', '    ')
+                    print line
+                else:
+                    print line,
         elif self.auth_type == 'ldap':
             l_bdn = ""
 
@@ -557,12 +578,6 @@ class VMwareOnOCP(object):
                 url_base = bindDN.replace(("CN=" + self.ldap_user + ","), "")
                 url = "ldap://" + self.ldap_fqdn + ":389/" + url_base + "?sAMAccountName"
 
-            install_file = "playbooks/ocp-install.yaml"
-            if self.lb_ha_ip:
-                lb_name = self.lb_ha_ip
-            else:
-                lb_name = self.lb_host + "." + self.dns_zone
-
             for line in fileinput.input(install_file, inplace=True):
             # Parse our ldap url
                 if line.startswith("      url:"):
@@ -571,32 +586,6 @@ class VMwareOnOCP(object):
                     print "      bindPassword: " + self.ldap_user_password
                 elif line.startswith("      bindDN:"):
                     print "      bindDN: " + bindDN
-                elif line.startswith("    wildcard_zone:"):
-                    print "    wildcard_zone: " + self.app_dns_prefix + "." + self.dns_zone
-                elif line.startswith("    load_balancer_hostname:"):
-                    print "    load_balancer_hostname: " + lb_name
-                elif line.startswith("    deployment_type:"):
-                    print "    deployment_type: " + self.deployment_type
-                elif line.startswith("    openshift_hosted_registry_storage_host:"):
-                    print "    openshift_hosted_registry_storage_host: " + self.nfs_host + "." + self.dns_zone
-                elif line.startswith("    openshift_hosted_registry_storage_nfs_directory:"):
-                    print "    openshift_hosted_registry_storage_nfs_directory: " + self.nfs_registry_mountpoint
-                elif line.startswith("    openshift_hosted_metrics_storage_host:"):
-                    print "    openshift_hosted_metrics_storage_host: " + self.nfs_host + "." + self.dns_zone
-                elif line.startswith("    openshift_hosted_metrics_storage_nfs_directory:"):
-                    print "    openshift_hosted_metrics_storage_nfs_directory: " + self.nfs_registry_mountpoint
-                else:
-                    print line,
-
-            # Provide values for update and add node playbooks       
-            update_file = "playbooks/minor-update.yaml"
-            for line in fileinput.input(update_file, inplace=True):
-                if line.startswith("    wildcard_zone:"):
-                    print "    wildcard_zone: " + self.app_dns_prefix + "." + self.dns_zone
-                elif line.startswith("    load_balancer_hostname:"):
-                    print "    load_balancer_hostname: " + self.lb_host + "." + self.dns_zone
-                elif line.startswith("    deployment_type:"):
-                    print "    deployment_type: " + self.deployment_type
                 else:
                     print line,
 
@@ -618,7 +607,8 @@ class VMwareOnOCP(object):
         tags = []
         tags.append('setup')
 
-        if self.byo_nfs == "False":
+        # TODO(vponomar): make it configurable
+        if self.byo_nfs == "False" and False:
             tags.append('nfs')
 
         tags.append('prod')
@@ -703,6 +693,7 @@ class VMwareOnOCP(object):
             openshift_hosted_metrics_deploy=%s \
             lb_host=%s \
             lb_ha_ip=%s \
+            ocp_hostname_prefix=%s \
             nfs_host=%s \
             nfs_registry_mountpoint=%s \' %s' % ( tags,
                             self.vcenter_host,
@@ -739,6 +730,7 @@ class VMwareOnOCP(object):
                             self.openshift_hosted_metrics_deploy,
                             self.lb_host,
                             self.lb_ha_ip,
+                            self.ocp_hostname_prefix,
                             self.nfs_host,
                             self.nfs_registry_mountpoint,
                             playbook)

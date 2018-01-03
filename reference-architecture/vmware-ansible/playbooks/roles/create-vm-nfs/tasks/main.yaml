@@ -60,6 +60,7 @@
 - name: Add NFS server to inventory
   add_host:
     hostname: "{{ host_data.value.guestname }}"
+    ansible_fqdn: "{{ item.value.guestname }}.{{ dns_zone }}"
     ansible_ssh_host: "{{ facts.instance.hw_eth0.ipaddresses | ipv4 | first }}"
     groups: "{{ host_data.value.tag }}, nfs_group"
   when: host_data | default({})

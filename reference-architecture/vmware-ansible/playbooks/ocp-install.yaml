@@ -46,9 +46,9 @@
     osm_cluster_network_cidr: 172.16.0.0/16
     osm_use_cockpit: false
     osm_default_node_selector: "role=app"
-    openshift_registry_selector: "role=infra"
+    openshift_registry_selector: "role=app"
     openshift_override_hostname_check: true
-    openshift_router_selector: "role=infra"
+    openshift_router_selector: "role=app"
     openshift_master_cluster_method: native
     openshift_cloudprovider_kind: vsphere
     wildcard_zone:
@@ -59,35 +59,4 @@
     openshift_master_cluster_hostname: "{{ load_balancer_hostname }}"
     openshift_master_cluster_public_hostname: "{{ load_balancer_hostname }}"
     os_sdn_network_plugin_name: "{{ openshift_sdn }}"
-    openshift_master_identity_providers:
-    - name: Active_Directory
-      challenge: true
-      login: true
-      kind: LDAPPasswordIdentityProvider
-      attributes:
-        id:
-        - dn
-        email:
-        - mail
-        name:
-        - cn
-        preferredUsername:
-        - uid
-      insecure: true
-      url:
-      bindDN:
-      bindPassword:
-    openshift_hosted_registry_storage_kind: nfs
-    openshift_hosted_registry_storage_access_modes: ['ReadWriteMany']
-    openshift_hosted_registry_storage_host:
-    openshift_hosted_registry_storage_nfs_directory:
-    openshift_hosted_registry_storage_volume_name: registry
-    openshift_hosted_registry_storage_volume_size: 20Gi
-    openshift_master_metrics_public_url: "https://metrics.{{ osm_default_subdomain }}/hawkular/metrics"
-    openshift_hosted_metrics_storage_kind: nfs
-    openshift_hosted_metrics_storage_access_modes: ['ReadWriteOnce']
-    openshift_hosted_metrics_storage_host:
-    openshift_hosted_metrics_storage_nfs_directory:
-    openshift_hosted_metrics_storage_volume_name: metrics
-    openshift_hosted_metrics_storage_volume_size: 10Gi
-#openshift_master_identity_providers: "[{'name': 'allow_all', 'login': 'true', 'challenge': 'true', 'kind': 'AllowAllPasswordIdentityProvider'}]"
+    openshift_master_identity_providers: "[{'name': 'allow_all', 'login': 'true', 'challenge': 'true', 'kind': 'AllowAllPasswordIdentityProvider'}]"

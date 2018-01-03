@@ -27,6 +27,7 @@
 - name: Add a master to the single master group
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
+    openshift_hostname: "{{ hostvars[item].inventory_hostname }}"
     groups: single_master
     openshift_node_labels:
       role: master
@@ -35,8 +36,8 @@
 - name: Add infra instances to host group
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
-    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, infra
     openshift_hostname: "{{ hostvars[item].inventory_hostname }}"
+    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, infra
     openshift_node_labels:
       role: infra
   with_items: "{{ groups[cluster_id + '-infra'] | default([]) }}"
@@ -64,12 +65,14 @@
 - name: Add NFS instances to allnodes
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
+    openshift_hostname: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes
   with_items: "{{ groups[cluster_id + '-networkfs'] | default([]) }}"
 
 - name: Add loadbalancer instances to allnodes
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
+    openshift_hostname: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes
   with_items: "{{ groups[cluster_id + '-loadbalancer'] | default([]) }}"
 
