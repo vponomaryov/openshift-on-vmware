@@ -77,7 +77,9 @@ class VMwareOnOCP(object):
             else:
                 if click.confirm('Overwrite the existing inventory file?'):
                     self._create_inventory_file()
-        if self.args.create_ocp_vars or "load_balancer_hostname:" in self.lb_config:
+        if (self.args.create_ocp_vars or
+                "load_balancer_hostname:" in self.lb_config or
+                self.vm_ipaddr_allocation_type == 'dhcp'):
             if self.no_confirm:
                 self._create_ocp_vars()
             else:
