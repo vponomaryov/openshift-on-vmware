@@ -44,6 +44,7 @@ class VMWareAddNode(object):
     app_nodes=None
     storage_nodes=None
     vm_ipaddr_start=None
+    vm_ipaddr_allocation_type=None
     ocp_hostname_prefix=None
     auth_type=None
     ldap_user=None
@@ -178,6 +179,7 @@ class VMWareAddNode(object):
             'app_nodes':'3',
             'storage_nodes':'0',
             'vm_ipaddr_start':'',
+            'vm_ipaddr_allocation_type': 'static',
             'ocp_hostname_prefix':'',
             'auth_type':'ldap',
             'ldap_user':'openshift',
@@ -241,7 +243,8 @@ class VMWareAddNode(object):
         self.app_nodes = config.get('vmware', 'app_nodes')
         self.storage_nodes = config.get('vmware', 'storage_nodes')
         self.vm_ipaddr_start = config.get('vmware', 'vm_ipaddr_start')
-        self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix')
+        self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
+        self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix') or ''
         self.auth_type = config.get('vmware', 'auth_type')
         self.ldap_user = config.get('vmware', 'ldap_user')
         self.ldap_user_password = config.get('vmware', 'ldap_user_password')
@@ -260,11 +263,29 @@ class VMWareAddNode(object):
                 self.inventory_file = "crs-inventory.json"
             if 'cns' in self.container_storage:
                 self.inventory_file = "cns-inventory.json"
-        required_vars = {'cluster_id':self.cluster_id, 'dns_zone':self.dns_zone, 'vcenter_host':self.vcenter_host, 'vcenter_password':self.vcenter_password, 'vm_ipaddr_start':self.vm_ipaddr_start, 'ldap_fqdn':self.ldap_fqdn, 'ldap_user_password':self.ldap_user_password, 'vm_dns':self.vm_dns, 'vm_gw':self.vm_gw, 'vm_netmask':self.vm_netmask, 'vcenter_datacenter':self.vcenter_datacenter}
+        required_vars = {
+            'cluster_id': self.cluster_id,
+            'dns_zone': self.dns_zone,
+            'vcenter_host': self.vcenter_host,
+            'vcenter_password': self.vcenter_password,
+            'vm_ipaddr_start': self.vm_ipaddr_start,
+            'vm_ipaddr_allocation_type': self.vm_ipaddr_allocation_type,
+            'ldap_fqdn': self.ldap_fqdn,
+            'ldap_user_password': self.ldap_user_password,
+            'vm_dns': self.vm_dns,
+            'vm_gw': self.vm_gw,
+            'vm_netmask': self.vm_netmask,
+            'vcenter_datacenter':self.vcenter_datacenter,
+        }
         for k, v in required_vars.items():
             if v == '':
                 err_count += 1
                 print "Missing %s " % k
+        if required_vars['vm_ipaddr_allocation_type'] not in ('dhcp', 'static'):
+            err_count += 1
+            print ("'vm_ipaddr_allocation_type' can take only "
+                   "'dhcp' and 'static' values.")
+
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  vmware_ini_path
             exit (1)
@@ -311,19 +332,26 @@ class VMWareAddNode(object):
             if self.node_type == 'app':
                 node_ip = int(self.app_nodes) + i
                 guest_name = self.node_type + '-' + str(node_ip)
+                guest_type = 'app'
             if self.node_type == 'infra':
                 node_ip = int(self.infra_nodes) + i
                 guest_name = self.node_type + '-' + str(node_ip)
+                guest_type = 'infra'
             if self.node_type == 'storage' and self.container_storage == 'crs':
                 node_ip = int(self.storage_nodes) + i
                 guest_name = 'crs-' + str(node_ip)
+                guest_type = 'crs'
             if self.node_type == 'storage' and self.container_storage == 'cns':
                 node_ip =  int(self.storage_nodes) + i
                 guest_name = 'app-cns-' + str(node_ip)
+                guest_type = 'cns'
             if self.ocp_hostname_prefix:
-                guest_name = self.ocp_hostname_prefix + guest_name
+                guest_name = "%s-%s" % (self.ocp_hostname_prefix, guest_name)
             d['host_inventory'][guest_name] = {}
             d['host_inventory'][guest_name]['guestname'] = guest_name
+            d['host_inventory'][guest_name]['guesttype'] = guest_type
+            d['host_inventory'][guest_name]['vm_ipaddr_allocation_type'] = (
+                self.vm_ipaddr_allocation_type)
             d['host_inventory'][guest_name]['ip4addr'] = unusedip4addr[0]
             d['host_inventory'][guest_name]['tag'] = str(self.cluster_id) + '-' + self.node_type
             data = data + '{ "node" : { "hostnames": {"manage": [ "%s.%s" ],"storage": [ "%s" ]},"zone": %s },"devices": [ "/dev/sdd" ]}' % (  guest_name, self.dns_zone,  unusedip4addr[0], i+1 )
@@ -333,7 +361,7 @@ class VMWareAddNode(object):
         data = data + "]}]}"
 
         with open(self.inventory_file, 'w') as outfile:
-            json.dump(d, outfile)
+            json.dump(d, outfile, indent=4, sort_keys=True)
 
         if 'storage' in self.node_type:
 
@@ -354,12 +382,11 @@ class VMWareAddNode(object):
 
         print 'Inventory file created: %s' % self.inventory_file
 
-        if self.byo_lb == "False":
-            lb_host_fqdn = "%s.%s" % (self.lb_host, self.dns_zone)
-            self.lb_host = lb_host_fqdn
+        if self.byo_lb == "False" and int(self.master_nodes) > 1:
+            self.lb_host = "%s-%s" % (self.ocp_hostname_prefix, self.lb_host)
+        else:
+            self.lb_host = "%s-master-0" % self.ocp_hostname_prefix
 
-            if self.ocp_hostname_prefix is not None:
-                self.lb_host = self.ocp_hostname_prefix + self.lb_host
         # Provide values for update and add node playbooks       
         update_file = ["playbooks/node-setup.yaml"]
         for line in fileinput.input(update_file, inplace=True):
@@ -440,6 +467,7 @@ class VMWareAddNode(object):
             vm_gw=%s \
             vm_netmask=%s \
             vm_network=%s \
+            vm_ipaddr_allocation_type=%s \
             wildcard_zone=%s \
             console_port=%s \
             cluster_id=%s \
@@ -458,6 +486,7 @@ class VMWareAddNode(object):
             openshift_sdn=%s \
             lb_host=%s \
             node_type=%s \
+            ocp_hostname_prefix=%s \
             nfs_host=%s \
             nfs_registry_mountpoint=%s \' %s' % ( self.inventory_file,
                             self.tag,
@@ -477,6 +506,7 @@ class VMWareAddNode(object):
                             self.vm_gw,
                             self.vm_netmask,
                             self.vm_network,
+                            self.vm_ipaddr_allocation_type,
                             self.wildcard_zone,
                             self.console_port,
                             self.cluster_id,
@@ -495,6 +525,7 @@ class VMWareAddNode(object):
                             self.openshift_sdn,
                             self.lb_host,
                             self.node_type,
+                            self.ocp_hostname_prefix,
                             self.nfs_host,
                             self.nfs_registry_mountpoint,
                             playbook)
