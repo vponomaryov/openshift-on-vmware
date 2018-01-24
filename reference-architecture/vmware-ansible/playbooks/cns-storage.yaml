@@ -8,5 +8,8 @@
 - include: node-setup.yaml
   tags: [ 'node-setup']
 
+- include: cns-setup.yaml
+  tags: [ 'node-setup']
+
 - include: cleanup-cns.yaml
   tags: ['clean']

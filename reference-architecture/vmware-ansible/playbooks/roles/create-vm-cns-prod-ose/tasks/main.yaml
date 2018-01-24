@@ -43,9 +43,9 @@
       datastore: "{{ vcenter_datastore }}"
       type: thin
     - size_gb: 40
-    #  datastore: "{{ vcenter_datastore }}"
-    #  type: thin
-    #- size_gb: 300
+      datastore: "{{ vcenter_datastore }}"
+      type: thin
+    - size_gb: 300
       datastore: "{{ vcenter_datastore }}"
       type: eagerZeroedThick
     hardware:
@@ -75,6 +75,12 @@
     hostname: "{{ item.value.guestname }}"
     ansible_fqdn: "{{ item.value.guestname }}.{{ dns_zone }}"
     ansible_ssh_host: "{{ ip4addrs[item.value.guestname] }}"
-    groups: "{{ item.value.tag }}, cns, new_nodes"
+    groups: "{{ item.value.tag }}, new_nodes, storage, cns, glusterfs"
+    # Following vars are for 'openshift_storage_glusterfs' role from
+    # 'openshift/openshift-ansible' repo
+    glusterfs_devices: ["/dev/sdd"]
+    glusterfs_hostname: "{{ item.value.guestname }}"
+    glusterfs_ip: "{{ ip4addrs[item.value.guestname] }}"
+    glusterfs_zone: "{{ ip4addrs[item.value.guestname].split('.')[-2::] | join('') | int }}"
   with_dict: "{{ host_inventory }}"
   when: "item.value.guesttype in ['cns', ]"

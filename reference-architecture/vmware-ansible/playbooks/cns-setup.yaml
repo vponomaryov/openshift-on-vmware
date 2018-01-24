@@ -1,0 +1,42 @@
+---
+- hosts: cns
+  tasks:
+  - name: Install required kernel modules on CNS nodes
+    import_role:
+      name: openshift_storage_glusterfs
+      tasks_from: kernel_modules.yml
+
+- hosts: single_master
+  tasks:
+  - name: Perform actions on master node which are required to install CNS 
+    import_role:
+      name: openshift_storage_glusterfs
+    vars:
+      openshift_storage_glusterfs_name: 'cns'
+      openshift_storage_glusterfs_namespace: 'cns'
+      openshift_storage_glusterfs_is_native: true
+      openshift_storage_glusterfs_storageclass: true
+      openshift_storage_glusterfs_version: 'latest'
+      openshift_storage_glusterfs_block_version: 'latest'
+      openshift_storage_glusterfs_block_host_vol_size: 299
+      openshift_storage_glusterfs_s3_deploy: false
+      openshift_storage_glusterfs_heketi_version: 'latest'
+      openshift_storage_glusterfs_heketi_topology_load: true
+
+- name: Get IP address of the node with router
+  hosts: single_master
+  tasks:
+  - command: "oc get endpoints router -o=custom-columns=:.subsets[*].addresses[0].ip"
+    register: router_get
+  - set_fact:
+      router_ip: "{{ router_get.stdout_lines[1].strip() }}"
+
+- name: Update dnsmasq config with custom domain zone for apps
+  hosts: master
+  tasks:
+  - lineinfile:
+      path: /etc/dnsmasq.conf
+      line: "address=/.{{ app_dns_prefix }}.{{ dns_zone }}/{{ router_ip }}"
+  - service:
+      name: dnsmasq
+      state: restarted
