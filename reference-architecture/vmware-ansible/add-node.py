@@ -68,6 +68,7 @@ class VMWareAddNode(object):
     node_type=None
     node_number=None
     container_storage=None
+    container_storage_size=None
     tag=None
     verbose=0
 
@@ -159,6 +160,7 @@ class VMWareAddNode(object):
             'ini_path': os.path.join(os.path.dirname(__file__), '%s.ini' % scriptbasename),
             'console_port':'8443',
             'container_storage':'none',
+            'container_storage_size':'300',
             'deployment_type':'openshift-enterprise',
             'openshift_vers':'v3_4',
             'vcenter_username':'administrator@vsphere.local',
@@ -207,6 +209,7 @@ class VMWareAddNode(object):
         self.console_port = config.get('vmware', 'console_port')
         self.cluster_id = config.get('vmware', 'cluster_id')
         self.container_storage = config.get('vmware', 'container_storage')
+        self.container_storage_size = config.get('vmware', 'container_storage_size')
         self.deployment_type = config.get('vmware','deployment_type')
         self.openshift_vers = config.get('vmware','openshift_vers')
         self.vcenter_host = config.get('vmware', 'vcenter_host')
@@ -484,6 +487,7 @@ class VMWareAddNode(object):
             console_port=%s \
             cluster_id=%s \
             container_storage=%s \
+            container_storage_size=%s \
             deployment_type=%s \
             openshift_vers=%s \
             admin_key=%s \
@@ -523,6 +527,7 @@ class VMWareAddNode(object):
                             self.console_port,
                             self.cluster_id,
                             self.container_storage,
+                            self.container_storage_size,
                             self.deployment_type,
                             self.openshift_vers,
                             self.admin_key,

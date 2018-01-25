@@ -18,7 +18,7 @@
       openshift_storage_glusterfs_storageclass: true
       openshift_storage_glusterfs_version: 'latest'
       openshift_storage_glusterfs_block_version: 'latest'
-      openshift_storage_glusterfs_block_host_vol_size: 299
+      openshift_storage_glusterfs_block_host_vol_size: "{{ container_storage_size | int }}"
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_version: 'latest'
       openshift_storage_glusterfs_heketi_topology_load: true

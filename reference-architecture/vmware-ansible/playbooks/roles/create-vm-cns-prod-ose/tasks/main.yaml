@@ -45,7 +45,7 @@
     - size_gb: 40
       datastore: "{{ vcenter_datastore }}"
       type: thin
-    - size_gb: 300
+    - size_gb: "{{ container_storage_size | int }}"
       datastore: "{{ vcenter_datastore }}"
       type: eagerZeroedThick
     hardware:
