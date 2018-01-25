@@ -47,7 +47,7 @@
       type: thin
     - size_gb: "{{ container_storage_size | int }}"
       datastore: "{{ vcenter_datastore }}"
-      type: eagerZeroedThick
+      type: "{{ container_storage_disk_type }}"
     hardware:
       memory_mb: 32768
     networks: "[ {{ network_parameters[item.value.guestname] }} ]"

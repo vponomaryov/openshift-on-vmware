@@ -69,6 +69,7 @@ class VMWareAddNode(object):
     node_number=None
     container_storage=None
     container_storage_size=None
+    container_storage_disk_type=None
     tag=None
     verbose=0
 
@@ -161,6 +162,7 @@ class VMWareAddNode(object):
             'console_port':'8443',
             'container_storage':'none',
             'container_storage_size':'300',
+            'container_storage_disk_type':'eagerZeroedThick',
             'deployment_type':'openshift-enterprise',
             'openshift_vers':'v3_4',
             'vcenter_username':'administrator@vsphere.local',
@@ -210,6 +212,8 @@ class VMWareAddNode(object):
         self.cluster_id = config.get('vmware', 'cluster_id')
         self.container_storage = config.get('vmware', 'container_storage')
         self.container_storage_size = config.get('vmware', 'container_storage_size')
+        self.container_storage_disk_type = config.get(
+            'vmware', 'container_storage_disk_type')
         self.deployment_type = config.get('vmware','deployment_type')
         self.openshift_vers = config.get('vmware','openshift_vers')
         self.vcenter_host = config.get('vmware', 'vcenter_host')
@@ -488,6 +492,7 @@ class VMWareAddNode(object):
             cluster_id=%s \
             container_storage=%s \
             container_storage_size=%s \
+            container_storage_disk_type=%s \
             deployment_type=%s \
             openshift_vers=%s \
             admin_key=%s \
@@ -528,6 +533,7 @@ class VMWareAddNode(object):
                             self.cluster_id,
                             self.container_storage,
                             self.container_storage_size,
+                            self.container_storage_disk_type,
                             self.deployment_type,
                             self.openshift_vers,
                             self.admin_key,
