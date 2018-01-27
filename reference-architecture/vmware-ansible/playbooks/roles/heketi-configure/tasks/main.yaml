@@ -20,6 +20,14 @@
 - name: source bashrc
   action: shell source ~/.bashrc
 
+- name: Place in dynamically taken IP addresses if DHCP is used
+  replace:
+    dest: ../topology.json
+    regexp: "__{{ hostvars[item].inventory_hostname_short }}__"
+    replace: "{{ hostvars[item].ansible_ssh_host }}"
+  with_items: "{{ groups[cluster_id + '-' + container_storage] }}"
+  when: "'dhcp' == vm_ipaddr_allocation_type"
+
 - name: Copy topology config file to single_crs
   template:
     src: ../topology.json

@@ -5,10 +5,19 @@
   vars_files:
   - vars/main.yaml
   roles:
+  - setup-custom-domain-names
   - instance-groups
   - rhsm
   - vmware-guest-setup
+  - cloud-provider-setup
   - docker-storage-setup
   - openshift-volume-quota
   - gluster-ports
 - include: add-node-prerequisite.yaml
+
+- name: Map domain names and IP addresses of old and new nodes to each other
+  hosts: loadbalancer, master, infra, app, crs
+  vars_files:
+    - vars/main.yaml
+  roles:
+    - setup-custom-domain-names

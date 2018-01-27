@@ -353,9 +353,21 @@ class VMWareAddNode(object):
             d['host_inventory'][guest_name]['vm_ipaddr_allocation_type'] = (
                 self.vm_ipaddr_allocation_type)
             d['host_inventory'][guest_name]['ip4addr'] = unusedip4addr[0]
-            d['host_inventory'][guest_name]['tag'] = str(self.cluster_id) + '-' + self.node_type
-            data = data + '{ "node" : { "hostnames": {"manage": [ "%s.%s" ],"storage": [ "%s" ]},"zone": %s },"devices": [ "/dev/sdd" ]}' % (  guest_name, self.dns_zone,  unusedip4addr[0], i+1 )
+
+            if self.vm_ipaddr_allocation_type == 'dhcp':
+                # NOTE(vponomar): following will be replaced dynamically in
+                #                 playbook when DHCP is used.
+                storage_address = '__%s__' % guest_name
+            else:
+                storage_address = unusedip4addr[0]
             del unusedip4addr[0]
+
+            d['host_inventory'][guest_name]['tag'] = str(self.cluster_id) + '-' + self.node_type
+            data += (
+                '{"node": {"hostnames": {"manage": ["%s"], "storage": ["%s"]}, "zone": %s},'
+                ' "devices": ["/dev/sdd"]}' % (
+                    guest_name, storage_address, i + 1)
+            )
             if unusedip4addr:
                 data = data + ","
         data = data + "]}]}"

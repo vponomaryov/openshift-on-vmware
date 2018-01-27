@@ -1,4 +1,25 @@
 ---
+- name: Define DHCP network parameters per node
+  set_fact:
+    network_parameters: "{{ network_parameters | default({}) |
+                            combine({item.value.guestname: {
+                                'name': vm_network,
+                                'type': vm_ipaddr_allocation_type,
+                                'gateway': vm_gw}}, recursive=True) }}"
+  with_dict: "{{ host_inventory }}"
+  when: "item.value.guesttype in ['cns', ]"
+
+- name: Define static network parameters per node
+  set_fact:
+    network_parameters: "{{ network_parameters |
+                            combine({item.value.guestname: {
+                                'ip': item.value.ip4addr,
+                                'netmask': vm_netmask}}, recursive=True) }}"
+  with_dict: "{{ host_inventory }}"
+  when:
+  - "'static' == vm_ipaddr_allocation_type"
+  - "item.value.guesttype in ['cns', ]"
+
 - name: Create CNS production VMs on vCenter
   vmware_guest:
     hostname: "{{ vcenter_host }}"
@@ -22,18 +43,14 @@
       datastore: "{{ vcenter_datastore }}"
       type: thin
     - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 300
+    #  datastore: "{{ vcenter_datastore }}"
+    #  type: thin
+    #- size_gb: 300
       datastore: "{{ vcenter_datastore }}"
       type: eagerZeroedThick
     hardware:
       memory_mb: 32768
-    networks:
-    - name: "{{ vm_network }}"
-      ip: "{{ item.value.ip4addr }}"
-      netmask: "{{ vm_netmask }}"
-      gateway: "{{ vm_gw }}"
+    networks: "[ {{ network_parameters[item.value.guestname] }} ]"
     customization:
       domain: "{{dns_zone}}"
       dns_servers:
@@ -41,9 +58,23 @@
       dns_suffix: "{{dns_zone}}"
       hostname: "{{ item.value.guestname}}"
   with_dict: "{{host_inventory}}"
-  when: "'cns' in item.value.guestname"
+  when: "item.value.guesttype in ['cns', ]"
+  register: facts
+
+- name: Map node names and their IP addresses
+  set_fact:
+    ip4addrs: "{{ ip4addrs | default({}) | combine(
+                      {item.item.value.guestname: (
+                           item.instance.hw_eth0.ipaddresses | ipv4 | first)},
+                      recursive=True) }}"
+  with_items: "{{ facts.results }}"
+  when: "item.item.value.guesttype in ['cns', ]"
 
 - name: Add CNS production VMs to inventory
-  add_host: hostname="{{ item.value.guestname }}" ansible_ssh_host="{{ item.value.ip4addr }}" groups="{{ item.value.tag }}, cns, new_nodes"
-  with_dict: "{{host_inventory}}"
-  when: "'cns' in item.value.guestname"
+  add_host:
+    hostname: "{{ item.value.guestname }}"
+    ansible_fqdn: "{{ item.value.guestname }}.{{ dns_zone }}"
+    ansible_ssh_host: "{{ ip4addrs[item.value.guestname] }}"
+    groups: "{{ item.value.tag }}, cns, new_nodes"
+  with_dict: "{{ host_inventory }}"
+  when: "item.value.guesttype in ['cns', ]"
