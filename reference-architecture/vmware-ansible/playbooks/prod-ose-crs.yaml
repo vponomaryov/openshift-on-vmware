@@ -8,4 +8,4 @@
   roles:
   # Group systems
   - create-vm-crs-prod-ose
-  - instance-groups
+  - setup-custom-domain-names-for-ansible-runner

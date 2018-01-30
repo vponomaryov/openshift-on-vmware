@@ -265,11 +265,8 @@ class VMWareAddNode(object):
             self.node_number = 3
             if self.container_storage is None:
                 print "Please specify crs or cns in container_storage in the %s." % vmware_ini_path
-            if 'crs' in self.container_storage:
-                self.rhel_subscription_pool = "Red Hat Gluster Storage , Standard (16 Nodes)"
-                self.inventory_file = "crs-inventory.json"
-            if 'cns' in self.container_storage:
-                self.inventory_file = "cns-inventory.json"
+            elif self.container_storage in ('cns', 'crs'):
+                self.inventory_file = "%s-inventory.json" % self.container_storage
         required_vars = {
             'cluster_id': self.cluster_id,
             'dns_zone': self.dns_zone,
@@ -332,8 +329,6 @@ class VMWareAddNode(object):
             unusedip4addr.insert(0, ip4addr.pop())
         d = {}
         d['host_inventory'] = {}
-        data = {}
-        data = '{ "clusters": [ { "nodes": [ '
         for i in range(0, int(self.node_number)):
             #determine node_number increment on the number of nodes 
             if self.node_type == 'app':
@@ -370,34 +365,9 @@ class VMWareAddNode(object):
             del unusedip4addr[0]
 
             d['host_inventory'][guest_name]['tag'] = str(self.cluster_id) + '-' + self.node_type
-            data += (
-                '{"node": {"hostnames": {"manage": ["%s"], "storage": ["%s"]}, "zone": %s},'
-                ' "devices": ["/dev/sdd"]}' % (
-                    guest_name, storage_address, i + 1)
-            )
-            if unusedip4addr:
-                data = data + ","
-        data = data + "]}]}"
 
         with open(self.inventory_file, 'w') as outfile:
             json.dump(d, outfile, indent=4, sort_keys=True)
-
-        if 'storage' in self.node_type:
-
-            with open('topology-raw.json', 'w') as topfile:
-                json.dump(data, topfile)
-
-            for line in fileinput.input('topology-raw.json', inplace=True):
-                if line.endswith('"'):
-                    line = line[:-1]
-                if line.startswith('"'):
-                    line = line[1:]
-                line = line.replace("\\", "")
-                print line
-            cmd = "cat topology-raw.json  | python -m json.tool > topology.json"
-            os.system(cmd)
-            os.remove('topology-raw.json')
-            print "Gluster topology file created using /dev/sdd: topology.json"
 
         print 'Inventory file created: %s' % self.inventory_file
 
@@ -436,20 +406,11 @@ class VMWareAddNode(object):
             command='chmod 600 %s' % ssh_file
             os.system(command)
 
-        if 'cns' in self.container_storage and 'storage' in self.node_type:
+        if self.container_storage in ('cns', 'crs') and 'storage' in self.node_type:
             if 'None' in self.tag:
                 # do the full install and config minus the cleanup
                 self.tag = 'vms,node-setup'
-            playbooks = ['playbooks/cns-storage.yaml']
-
-        elif 'crs' in self.container_storage and 'storage' in self.node_type:
-            if 'None' in self.tag:
-                # do the full install and config minus the cleanup
-                self.tag = 'vms,node-setup,heketi-setup,heketi-ocp'
-            playbooks = ['playbooks/crs-storage.yaml']
-            if 'heketi-setup' in self.tag:
-                self.admin_key = click.prompt("Admin key password for heketi?", hide_input=True)
-                self.user_key = click.prompt("User key password for heketi?", hide_input=True)
+            playbooks = ['playbooks/%s-storage.yaml' % self.container_storage]
         else:
             if 'None' in self.tag:
                 # do the full install and config minus the cleanup

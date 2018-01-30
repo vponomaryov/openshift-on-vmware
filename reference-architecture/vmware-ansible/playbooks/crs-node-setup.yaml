@@ -5,11 +5,16 @@
   vars_files:
   - vars/main.yaml
   roles:
+  - setup-custom-domain-names
   - instance-groups
-  - rhsm-subscription
   - gluster-rhsm-repos
   - vmware-guest-setup
-  - docker-storage-setup
-  - openshift-volume-quota
   - gluster-crs-prerequisites
   - gluster-ports
+
+- name: Map domain names and IP addresses of old and new nodes to each other
+  hosts: loadbalancer, master, infra, app, cns
+  vars_files:
+    - vars/main.yaml
+  roles:
+    - setup-custom-domain-names

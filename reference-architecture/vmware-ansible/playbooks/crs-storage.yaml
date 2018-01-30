@@ -5,11 +5,8 @@
 - include: crs-node-setup.yaml
   tags: [ 'node-setup' ]
 
-- include: heketi-setup.yaml
-  tags: [ 'heketi-setup']
-
-- include: heketi-ocp.yaml
-  tags: ['heketi-ocp']
+- include: crs-setup.yaml
+  tags: [ 'node-setup']
 
 - include: cleanup-crs.yaml
   tags: ['clean']

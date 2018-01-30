@@ -1,0 +1,30 @@
+---
+- hosts: crs
+  tasks:
+  - name: Install required kernel modules on CRS nodes
+    import_role:
+      name: openshift_storage_glusterfs
+      tasks_from: kernel_modules.yml
+
+- hosts: single_master
+  tasks:
+  - name: Enable gluster 3 repo to be able to install heketi RPMS
+    command: subscription-manager repos --enable=rh-gluster-3-for-rhel-7-server-rpms
+  - name: Install and run heketi
+    import_role:
+      name: heketi-install
+  - name: Perform actions on master node which are required to install CRS 
+    import_role:
+      name: openshift_storage_glusterfs
+    vars:
+      openshift_storage_glusterfs_name: 'crs'
+      openshift_storage_glusterfs_namespace: 'crs'
+      openshift_storage_glusterfs_is_native: false
+      openshift_storage_glusterfs_heketi_is_native: false
+      openshift_storage_glusterfs_heketi_url: "{{ ansible_default_ipv4.address }}"
+      openshift_storage_glusterfs_storageclass: true
+      openshift_storage_glusterfs_version: 'latest'
+      openshift_storage_glusterfs_block_version: 'latest'
+      openshift_storage_glusterfs_block_host_vol_size: "{{ container_storage_size | int }}"
+      openshift_storage_glusterfs_s3_deploy: false
+      openshift_storage_glusterfs_heketi_executor: ssh

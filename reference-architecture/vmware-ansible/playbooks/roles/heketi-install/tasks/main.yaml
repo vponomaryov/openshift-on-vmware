@@ -28,6 +28,8 @@
   template:
     src: heketi.json.j2
     dest: /etc/heketi/heketi.json
+    owner: heketi
+    group: heketi
   notify: restart heketi
   when: heketi_cfg.stat.exists == True
 
