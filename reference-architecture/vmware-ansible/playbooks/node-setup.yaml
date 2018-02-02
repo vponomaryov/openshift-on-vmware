@@ -1,5 +1,5 @@
 ---
-- include: /usr/share/ansible/openshift-ansible/playbooks/byo/openshift-node/scaleup.yml
+- include: "{{ lookup('env', 'VIRTUAL_ENV') }}/usr/share/ansible/openshift-ansible/playbooks/byo/openshift-node/scaleup.yml"
   vars:
     debug_level: 2
     openshift_debug_level: "{{ debug_level }}"
