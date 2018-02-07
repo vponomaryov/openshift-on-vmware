@@ -22,12 +22,11 @@ multi_inventory.yaml
 *ocp-installer
 add-node.json
 infrastructure.json
-ansible.log
+*.log
 .tox
 .molecule
 static-inventory
 *.retry
 roles/infra-ansible/
 roles/openshift-ansible/
-pytestdebug.log
 .cache
