@@ -164,7 +164,7 @@ class VMWareAddNode(object):
             'container_storage_size':'300',
             'container_storage_disk_type':'eagerZeroedThick',
             'deployment_type':'openshift-enterprise',
-            'openshift_vers':'v3_4',
+            'openshift_vers':'v3_6',
             'vcenter_username':'administrator@vsphere.local',
             'vcenter_template_name':'ocp-server-template-2.0.2',
             'vcenter_folder':'ocp',

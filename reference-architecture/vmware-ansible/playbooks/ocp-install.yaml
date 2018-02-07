@@ -13,7 +13,7 @@
 - name: call openshift includes for installer
   include: "{{ lookup('env', 'VIRTUAL_ENV') }}/usr/share/ansible/openshift-ansible/playbooks/byo/config.yml"
   vars:
-    openshift_release: "v3.6"
+    openshift_release: "v3.{{ openshift_vers.split('_')[-1] }}"
     debug_level: 2
     console_port: 8443
     openshift_debug_level: "{{ debug_level }}"

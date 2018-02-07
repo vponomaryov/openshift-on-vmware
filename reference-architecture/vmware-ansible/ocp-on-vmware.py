@@ -273,7 +273,11 @@ class VMwareOnOCP(object):
         self.cluster_id = config.get('vmware', 'cluster_id')
         self.container_storage = config.get('vmware', 'container_storage')
         self.deployment_type = config.get('vmware','deployment_type')
-        self.openshift_vers = config.get('vmware','openshift_vers')
+        if os.environ.get('VIRTUAL_ENV'):
+            self.openshift_vers = (
+                'v3_%s' % os.environ['VIRTUAL_ENV'].split('_')[-1].split('.')[-1])
+        else:
+            self.openshift_vers = config.get('vmware','openshift_vers')
         self.vcenter_host = config.get('vmware', 'vcenter_host')
         self.vcenter_username = config.get('vmware', 'vcenter_username')
         self.vcenter_password = config.get('vmware', 'vcenter_password')
