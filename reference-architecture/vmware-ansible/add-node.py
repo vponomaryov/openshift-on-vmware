@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # vim: sw=4 ts=4 et
 
-import argparse, click, fileinput, iptools, os, six, sys, yaml, textwrap
+import argparse, click, fileinput, iptools, os, re, six, sys, yaml, textwrap
 from argparse import RawTextHelpFormatter
 from collections import defaultdict
 from six.moves import configparser
@@ -68,7 +68,7 @@ class VMWareAddNode(object):
     node_type=None
     node_number=None
     container_storage=None
-    container_storage_size=None
+    container_storage_disks=None
     container_storage_disk_type=None
     tag=None
     verbose=0
@@ -161,7 +161,7 @@ class VMWareAddNode(object):
             'ini_path': os.path.join(os.path.dirname(__file__), '%s.ini' % scriptbasename),
             'console_port':'8443',
             'container_storage':'none',
-            'container_storage_size':'300',
+            'container_storage_disks':'100,600,100',
             'container_storage_disk_type':'eagerZeroedThick',
             'deployment_type':'openshift-enterprise',
             'openshift_vers':'v3_6',
@@ -211,7 +211,7 @@ class VMWareAddNode(object):
         self.console_port = config.get('vmware', 'console_port')
         self.cluster_id = config.get('vmware', 'cluster_id')
         self.container_storage = config.get('vmware', 'container_storage')
-        self.container_storage_size = config.get('vmware', 'container_storage_size')
+        self.container_storage_disks = config.get('vmware', 'container_storage_disks')
         self.container_storage_disk_type = config.get(
             'vmware', 'container_storage_disk_type')
         self.deployment_type = config.get('vmware','deployment_type')
@@ -289,6 +289,13 @@ class VMWareAddNode(object):
             err_count += 1
             print ("'vm_ipaddr_allocation_type' can take only "
                    "'dhcp' and 'static' values.")
+        if not (self.container_storage_disks and
+                re.search(r'^[0-9]*(,[0-9]*)*$',
+                          self.container_storage_disks)):
+            err_count += 1
+            print ("'container_storage_disks' has improper value - "
+                   "'%s'. Only integers separated with comma are allowed." % (
+                       self.container_storage_disks))
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  vmware_ini_path
@@ -455,7 +462,7 @@ class VMWareAddNode(object):
             console_port=%s \
             cluster_id=%s \
             container_storage=%s \
-            container_storage_size=%s \
+            container_storage_disks=%s \
             container_storage_disk_type=%s \
             deployment_type=%s \
             openshift_vers=%s \
@@ -496,7 +503,7 @@ class VMWareAddNode(object):
                             self.console_port,
                             self.cluster_id,
                             self.container_storage,
-                            self.container_storage_size,
+                            self.container_storage_disks,
                             self.container_storage_disk_type,
                             self.deployment_type,
                             self.openshift_vers,

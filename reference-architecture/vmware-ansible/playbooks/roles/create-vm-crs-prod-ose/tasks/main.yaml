@@ -20,6 +20,18 @@
   - "'static' == vm_ipaddr_allocation_type"
   - "item.value.guesttype in ['crs', ]"
 
+- name: Define set of disks
+  set_fact:
+    disks_info: "{{ disks_info | default([
+                     {'size_gb': 60, 'type': 'thin', 'datastore': vcenter_datastore},
+                     {'size_gb': 40, 'type': 'thin', 'datastore': vcenter_datastore},
+                     {'size_gb': 40, 'type': 'thin', 'datastore': vcenter_datastore}])
+                 }} + {{
+                    [{'size_gb': (item.strip() | int), 'type': container_storage_disk_type,
+                      'datastore': vcenter_datastore}]
+                 }}"
+  with_items: "{{ container_storage_disks.split(',') }}"
+
 - name: Create CRS production VMs on vCenter
   vmware_guest:
     hostname: "{{ vcenter_host }}"
@@ -35,19 +47,7 @@
     wait_for_ip_address: true
     folder: "/{{ vcenter_folder }}"
     annotation: "{{ cluster_id }}-crs"
-    disk:
-    - size_gb: 60
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: 40
-      datastore: "{{ vcenter_datastore }}"
-      type: thin
-    - size_gb: "{{ container_storage_size | int }}"
-      datastore: "{{ vcenter_datastore }}"
-      type: "{{ container_storage_disk_type }}"
+    disk: "{{ disks_info }}"
     hardware:
       memory_mb: 32768
     networks: "[ {{ network_parameters[item.value.guestname] }} ]"
@@ -70,6 +70,12 @@
   with_items: "{{ facts.results }}"
   when: "item.item.value.guesttype in ['crs', ]"
 
+- name: Define glusterfs devices
+  set_fact:
+    glusterfs_devices: "{{ glusterfs_devices | default([]) }} +
+                        {{ ['/dev/sd' + 'defghijklmnopqrstuvwxyz'[item.0]] }}"
+  with_indexed_items: disks_info
+
 - name: Add CRS production VMs to inventory
   add_host:
     hostname: "{{ item.value.guestname }}"
@@ -79,7 +85,7 @@
     groups: "{{ cluster_id }}-crs, crs, storage, glusterfs"
     # Following vars are for 'openshift_storage_glusterfs' role from
     # 'openshift/openshift-ansible' repo
-    glusterfs_devices: ["/dev/sdd"]
+    glusterfs_devices: "{{ glusterfs_devices }}"
     glusterfs_hostname: "{{ item.value.guestname }}"
     glusterfs_ip: "{{ ip4addrs[item.value.guestname] }}"
     glusterfs_zone: "{{ ip4addrs[item.value.guestname].split('.')[-2::] | join('') | int }}"
