@@ -18,6 +18,10 @@
     console_port: 8443
     openshift_debug_level: "{{ debug_level }}"
     openshift_node_debug_level: "{{ node_debug_level | default(debug_level, true) }}"
+    # NOTE(vponomar): following two can be changed to "true" when
+    # https://github.com/openshift/openshift-ansible/issues/6086 is fixed
+    openshift_enable_service_catalog: false
+    template_service_broker_install: false
     osm_controller_args:
       cloud-provider:
       - "vsphere"

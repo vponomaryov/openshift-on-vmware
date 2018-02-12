@@ -14,6 +14,6 @@ if [[ ! -d $TARGET_DIR ]]; then
     git clone $OPENSHIFT_ANSIBLE_GIT_URL --single-branch --branch $2 $TARGET_DIR
 else
     cd $TARGET_DIR
-    git fetch --all
+    git fetch -t --all
     git reset --hard $2
 fi
