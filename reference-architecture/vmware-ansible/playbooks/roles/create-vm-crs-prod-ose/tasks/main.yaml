@@ -20,17 +20,27 @@
   - "'static' == vm_ipaddr_allocation_type"
   - "item.value.guesttype in ['crs', ]"
 
-- name: Define set of disks
+- name: Define set of main disks (system and heketi)
   set_fact:
     disks_info: "{{ disks_info | default([
                      {'size_gb': 60, 'type': 'thin', 'datastore': vcenter_datastore},
                      {'size_gb': 40, 'type': 'thin', 'datastore': vcenter_datastore},
                      {'size_gb': 40, 'type': 'thin', 'datastore': vcenter_datastore}])
                  }} + {{
-                    [{'size_gb': (item.strip() | int), 'type': container_storage_disk_type,
+                    [{'size_gb': (item.strip() | int),
+                      'type': container_storage_disk_type,
                       'datastore': vcenter_datastore}]
                  }}"
   with_items: "{{ container_storage_disks.split(',') }}"
+
+- name: Define set of additional disks which will be just attached to nodes
+  set_fact:
+    additional_disks_info: "{{ additional_disks_info | default([]) }} + {{
+                               [{'size_gb': (item.strip() | int),
+                                 'type': container_storage_disk_type,
+                                 'datastore': vcenter_datastore}]
+                            }}"
+  with_items: "{{ additional_disks_to_storage_nodes.split(',') }}"
 
 - name: Create CRS production VMs on vCenter
   vmware_guest:
@@ -47,7 +57,7 @@
     wait_for_ip_address: true
     folder: "/{{ vcenter_folder }}"
     annotation: "{{ cluster_id }}-crs"
-    disk: "{{ disks_info }}"
+    disk: "{{ disks_info }} + {{ additional_disks_info }}"
     hardware:
       memory_mb: 32768
     networks: "[ {{ network_parameters[item.value.guestname] }} ]"

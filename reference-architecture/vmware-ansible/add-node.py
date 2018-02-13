@@ -70,6 +70,7 @@ class VMWareAddNode(object):
     container_storage=None
     container_storage_disks=None
     container_storage_disk_type=None
+    additional_disks_to_storage_nodes=None
     tag=None
     verbose=0
 
@@ -161,7 +162,8 @@ class VMWareAddNode(object):
             'ini_path': os.path.join(os.path.dirname(__file__), '%s.ini' % scriptbasename),
             'console_port':'8443',
             'container_storage':'none',
-            'container_storage_disks':'100,600,100',
+            'container_storage_disks':'100,600',
+            'additional_disks_to_storage_nodes': '100',
             'container_storage_disk_type':'eagerZeroedThick',
             'deployment_type':'openshift-enterprise',
             'openshift_vers':'v3_6',
@@ -214,6 +216,8 @@ class VMWareAddNode(object):
         self.container_storage_disks = config.get('vmware', 'container_storage_disks')
         self.container_storage_disk_type = config.get(
             'vmware', 'container_storage_disk_type')
+        self.additional_disks_to_storage_nodes = config.get(
+            'vmware', 'additional_disks_to_storage_nodes')
         self.deployment_type = config.get('vmware','deployment_type')
         self.openshift_vers = config.get('vmware','openshift_vers')
         self.vcenter_host = config.get('vmware', 'vcenter_host')
@@ -296,6 +300,12 @@ class VMWareAddNode(object):
             print ("'container_storage_disks' has improper value - "
                    "'%s'. Only integers separated with comma are allowed." % (
                        self.container_storage_disks))
+        if (self.additional_disks_to_storage_nodes and not re.search(
+                r'^[0-9]*(,[0-9]*)*$', self.additional_disks_to_storage_nodes)):
+            err_count += 1
+            print ("'additional_disks_to_storage_nodes' has improper "
+                   "value - '%s'. Only integers separated with comma "
+                   "are allowed." % self.additional_disks_to_storage_nodes)
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  vmware_ini_path
@@ -464,6 +474,7 @@ class VMWareAddNode(object):
             container_storage=%s \
             container_storage_disks=%s \
             container_storage_disk_type=%s \
+            additional_disks_to_storage_nodes=%s\
             deployment_type=%s \
             openshift_vers=%s \
             admin_key=%s \
@@ -505,6 +516,7 @@ class VMWareAddNode(object):
                             self.container_storage,
                             self.container_storage_disks,
                             self.container_storage_disk_type,
+                            self.additional_disks_to_storage_nodes,
                             self.deployment_type,
                             self.openshift_vers,
                             self.admin_key,
