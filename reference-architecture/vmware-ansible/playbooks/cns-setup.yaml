@@ -22,6 +22,12 @@
           container_storage_disks.split(',') | map('int') | list | max }}"
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_version: 'latest'
+      openshift_storage_glusterfs_heketi_admin_key: "{{
+          (heketi_admin_key.strip() != '') |
+              ternary(heketi_admin_key.strip(), omit) }}"
+      openshift_storage_glusterfs_heketi_user_key: "{{
+          (heketi_user_key.strip() != '') |
+              ternary(heketi_user_key.strip(), omit) }}"
       openshift_storage_glusterfs_heketi_topology_load: true
 
 - name: Get IP address of the node with router

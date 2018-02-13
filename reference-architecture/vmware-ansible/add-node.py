@@ -71,6 +71,8 @@ class VMWareAddNode(object):
     container_storage_disks=None
     container_storage_disk_type=None
     additional_disks_to_storage_nodes=None
+    heketi_admin_key=None
+    heketi_user_key=None
     tag=None
     verbose=0
 
@@ -165,6 +167,8 @@ class VMWareAddNode(object):
             'container_storage_disks':'100,600',
             'additional_disks_to_storage_nodes': '100',
             'container_storage_disk_type':'eagerZeroedThick',
+            'heketi_admin_key': '',
+            'heketi_user_key': '',
             'deployment_type':'openshift-enterprise',
             'openshift_vers':'v3_6',
             'vcenter_username':'administrator@vsphere.local',
@@ -218,6 +222,8 @@ class VMWareAddNode(object):
             'vmware', 'container_storage_disk_type')
         self.additional_disks_to_storage_nodes = config.get(
             'vmware', 'additional_disks_to_storage_nodes')
+        self.heketi_admin_key = config.get('vmware', 'heketi_admin_key')
+        self.heketi_user_key = config.get('vmware', 'heketi_user_key')
         self.deployment_type = config.get('vmware','deployment_type')
         self.openshift_vers = config.get('vmware','openshift_vers')
         self.vcenter_host = config.get('vmware', 'vcenter_host')
@@ -475,6 +481,8 @@ class VMWareAddNode(object):
             container_storage_disks=%s \
             container_storage_disk_type=%s \
             additional_disks_to_storage_nodes=%s\
+            heketi_admin_key=%s\
+            heketi_user_key=%s\
             deployment_type=%s \
             openshift_vers=%s \
             admin_key=%s \
@@ -517,6 +525,8 @@ class VMWareAddNode(object):
                             self.container_storage_disks,
                             self.container_storage_disk_type,
                             self.additional_disks_to_storage_nodes,
+                            self.heketi_admin_key,
+                            self.heketi_user_key,
                             self.deployment_type,
                             self.openshift_vers,
                             self.admin_key,
