@@ -7,8 +7,20 @@
   # Group systems
   - instance-groups
 
-- hosts: single_master
+- hosts: master
   gather_facts: yes
+  vars_files:
+  - vars/main.yaml
+  tasks:
+  - name: Enable gluster 3 repo to be able to install heketi client
+    command: subscription-manager repos --enable=rh-gluster-3-for-rhel-7-server-rpms
+  - name: Install heketi client for CNS and CRS needs
+    package:
+      name: heketi-client
+      state: latest
+
+- hosts: single_master
+  gather_facts: no
   vars_files:
   - vars/main.yaml
   roles:
