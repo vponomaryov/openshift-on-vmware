@@ -45,6 +45,7 @@ class VMWareAddNode(object):
     storage_nodes=None
     vm_ipaddr_start=None
     vm_ipaddr_allocation_type=None
+    cns_automation_config_file_path=None
     ocp_hostname_prefix=None
     auth_type=None
     ldap_user=None
@@ -190,6 +191,7 @@ class VMWareAddNode(object):
             'storage_nodes':'0',
             'vm_ipaddr_start':'',
             'vm_ipaddr_allocation_type': 'static',
+            'cns_automation_config_file_path': '',
             'ocp_hostname_prefix':'',
             'auth_type':'ldap',
             'ldap_user':'openshift',
@@ -261,6 +263,8 @@ class VMWareAddNode(object):
         self.storage_nodes = config.get('vmware', 'storage_nodes')
         self.vm_ipaddr_start = config.get('vmware', 'vm_ipaddr_start')
         self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
+        self.cns_automation_config_file_path = config.get(
+            'vmware', 'cns_automation_config_file_path')
         self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix') or ''
         self.auth_type = config.get('vmware', 'auth_type')
         self.ldap_user = config.get('vmware', 'ldap_user')
@@ -312,6 +316,16 @@ class VMWareAddNode(object):
             print ("'additional_disks_to_storage_nodes' has improper "
                    "value - '%s'. Only integers separated with comma "
                    "are allowed." % self.additional_disks_to_storage_nodes)
+        if (self.cns_automation_config_file_path and
+                not os.path.exists(
+                    os.path.abspath(self.cns_automation_config_file_path))):
+            err_count += 1
+            print ("Wrong value for 'cns_automation_config_file_path' "
+                   "config option. It is expected to be either a relative "
+                   "or an absolute file path.")
+        else:
+            self.cns_automation_config_file_path = os.path.abspath(
+                self.cns_automation_config_file_path)
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  vmware_ini_path
@@ -474,6 +488,7 @@ class VMWareAddNode(object):
             vm_netmask=%s \
             vm_network=%s \
             vm_ipaddr_allocation_type=%s \
+            cns_automation_config_file_path=%s \
             wildcard_zone=%s \
             console_port=%s \
             cluster_id=%s \
@@ -518,6 +533,7 @@ class VMWareAddNode(object):
                             self.vm_netmask,
                             self.vm_network,
                             self.vm_ipaddr_allocation_type,
+                            self.cns_automation_config_file_path,
                             self.wildcard_zone,
                             self.console_port,
                             self.cluster_id,

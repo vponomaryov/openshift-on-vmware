@@ -65,6 +65,7 @@ class VMwareOnOCP(object):
     vmware_ini_path=None
     clean=None
     vm_ipaddr_allocation_type=None,
+    cns_automation_config_file_path=None,
 
     def __init__(self, load=True):
         if load:
@@ -237,6 +238,7 @@ class VMwareOnOCP(object):
             'app_dns_prefix':'apps',
             'vm_network':'VM Network',
             'vm_ipaddr_allocation_type': 'static',
+            'cns_automation_config_file_path': '',
             'rhel_subscription_pool':'Red Hat OpenShift Container Platform, Premium*',
             'openshift_sdn':'redhat/openshift-ovs-subnet',
             'byo_lb':'False',
@@ -295,6 +297,8 @@ class VMwareOnOCP(object):
         self.vm_netmask = config.get('vmware', 'vm_netmask')
         self.vm_network = config.get('vmware', 'vm_network')
         self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
+        self.cns_automation_config_file_path = config.get(
+            'vmware', 'cns_automation_config_file_path')
         self.rhel_subscription_user = config.get('vmware', 'rhel_subscription_user')
         self.rhel_subscription_pass = config.get('vmware', 'rhel_subscription_pass')
         self.rhel_subscription_server = config.get('vmware', 'rhel_subscription_server')
@@ -344,6 +348,16 @@ class VMwareOnOCP(object):
             err_count += 1
             print ("'vm_ipaddr_allocation_type' can take only "
                    "'dhcp' and 'static' values.")
+        if (self.cns_automation_config_file_path and
+                not os.path.exists(
+                    os.path.abspath(self.cns_automation_config_file_path))):
+            err_count += 1
+            print ("Wrong value for 'cns_automation_config_file_path' "
+                   "config option. It is expected to be either a relative "
+                   "or an absolute file path.")
+        else:
+            self.cns_automation_config_file_path = os.path.abspath(
+                self.cns_automation_config_file_path)
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  self.vmware_ini_path
@@ -683,6 +697,7 @@ class VMwareOnOCP(object):
             vm_netmask=%s \
             vm_network=%s \
             vm_ipaddr_allocation_type=%s \
+            cns_automation_config_file_path=%s \
             wildcard_zone=%s \
             console_port=%s \
             cluster_id=%s \
@@ -720,6 +735,7 @@ class VMwareOnOCP(object):
                             self.vm_netmask,
                             self.vm_network,
                             self.vm_ipaddr_allocation_type,
+                            self.cns_automation_config_file_path,
                             self.wildcard_zone,
                             self.console_port,
                             self.cluster_id,

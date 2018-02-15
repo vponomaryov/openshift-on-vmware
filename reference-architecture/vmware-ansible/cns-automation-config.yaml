@@ -1,0 +1,104 @@
+log_file: /var/log/tests/cns_tests.log
+log_level: DEBUG
+
+ocp_servers:
+    master:
+        master_ip_addr:
+            hostname: "master_hostname"
+    client:
+        client_ip_addr:
+            hostname: "client_hostname"
+    nodes:
+        node_ip_addr:
+            hostname: "node_hostname"
+
+gluster_servers:
+    gluster_server_ip_address1:
+        manage: "gluster_server_ip_hostname1"
+        storage: gluster_server_ip_address1
+        zone: 1
+        devices: ['/dev/sdd', '/dev/sde', '/dev/sdf']
+        additional_devices: ['/dev/sdg']
+    gluster_server_ip_address2:
+        manage: "gluster_server_ip_hostname2"
+        storage: gluster_server_ip_address2
+        zone: 2
+        devices: ['/dev/sdd', '/dev/sde', '/dev/sdf']
+        additional_devices: ['/dev/sdg']
+    gluster_server_ip_address3:
+        manage: "gluster_server_ip_hostname3"
+        storage: gluster_server_ip_address3
+        zone: 3
+        devices: ['/dev/sdd', '/dev/sde', '/dev/sdf']
+        additional_devices: ['/dev/sdg']
+
+cns:
+    setup:
+        routing_config: "routing_config_value"
+        insecure_registry: "INSECURE_REGISTRY='--insecure-registry registry.access.redhat.com'"
+        add_registry: "ADD_REGISTRY='--add-registry registry.access.redhat.com'"
+        cns_project_name: "cns"
+        cns_username: "admin"
+        cns_password: "secret_value_for_admin_user"
+
+    # 'deployment_type' can be crs_heketi_outside_openshift|crs_heketi_inside_openshift|cns
+    deployment_type: "cns"
+    executor: ssh
+    executor_user: root
+    executor_port: 22
+    trusted_storage_pool_list:
+        - [gluster_server_ip_address1, gluster_server_ip_address2, gluster_server_ip_address3]
+    heketi_config:
+        heketi_client_node: master_ip_addr
+        heketi_server_url: "http://heketi.url"
+        heketi_cli_user: "admin"
+        heketi_cli_key: "secret_value_for_admin_user"
+        heketi_ssh_key: "/etc/heketi/heketi_key"
+        heketi_config_file: "/etc/heketi/topology.json"
+    heketi_volume:
+        size: 1
+        name: "volume_for_testing_size_extending"
+        expand_size: 2
+    dynamic_provisioning:
+        pods_info:
+            nginx:
+                size: 5
+                number_of_pods: 3
+            mongo:
+                size: 6
+                number_of_pods: 7
+        storage_classes:
+            storage_class1:
+                name:  "sc-glusterfs"
+                provisioner: "kubernetes.io/glusterfs"
+                resturl: "http://heketi.url"
+                restuser: "admin"
+                secretnamespace: "cns"
+                secretname: "heketi-secret-for-glusterfs-sc"
+            storage_class2:
+                name:  "sc-glusterblock"
+                provisioner: "gluster.org/glusterblock"
+                resturl: "http://heketi.url"
+                auth: True
+                restuser: "admin"
+                restsecretnamespace: "cns"
+                restsecretname: "heketi-secret-for-glusterblock-sc"
+                hacount: "3"
+                chapauthenabled: "true"
+        secrets:
+            secret1:
+                secret_name: "heketi-secret-for-glusterfs-sc"
+                namespace: "cns"
+                data_key: "cGFzc3dvcmQ="
+                type: "kubernetes.io/glusterfs"
+            secret2:
+                secret_name: "heketi-secret-for-glusterblock-sc"
+                namespace: "cns"
+                data_key: "cGFzc3dvcmQ="
+                type: "gluster.org/glusterblock"
+        start_count_for_pvc: 1
+        pvc_size_number:
+            10: 2
+            20: 1
+        app_pvc_count_dict:
+            nginx: 2

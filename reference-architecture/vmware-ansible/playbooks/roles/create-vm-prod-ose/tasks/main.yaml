@@ -90,3 +90,44 @@
     groups: "{{ item.value.tag }}, production_group{{ is_add_nodes | ternary(', new_nodes', '')}}"
   with_dict: "{{ host_inventory }}"
   when: "item.value.guesttype in ['app', 'master', 'infra']"
+
+# Following updates config file
+# which is required for automated tests from 'cns-automation' repo
+
+- name: Combine data about master/client nodes for 'cns-automation' config file
+  set_fact:
+    ocp_master_and_client_nodes: "{{
+        ocp_master_and_client_nodes | default({}) | combine({
+            ip4addrs[item.value.guestname]: {'hostname': item.value.guestname}
+        })
+    }}"
+  with_dict: "{{ host_inventory }}"
+  when:
+  - item.value.guesttype == 'master'
+  - cns_automation_config_file_path | length > 0
+
+- name: Combine data about compute nodes for 'cns-automation' config file
+  set_fact:
+    ocp_compute_nodes: "{{
+        ocp_compute_nodes | default({}) | combine({
+            ip4addrs[item.value.guestname]: {'hostname': item.value.guestname}
+        })
+    }}"
+  with_dict: "{{ host_inventory }}"
+  when:
+  - item.value.guesttype in ['app', 'infra']
+  - cns_automation_config_file_path | length > 0
+
+- name: Update 'cns-automation' config file
+  yedit:
+    src: "{{ cns_automation_config_file_path }}"
+    state: present
+    edits:
+    - key: ocp_servers
+      value:
+        master: "{{ ocp_master_and_client_nodes }}"
+        client: "{{ ocp_master_and_client_nodes }}"
+        nodes: "{{ ocp_compute_nodes }}"
+    - key: cns.heketi_config.heketi_client_node
+      value: "{{ ocp_master_and_client_nodes.keys()[0] }}"
+  when: ocp_master_and_client_nodes is defined
