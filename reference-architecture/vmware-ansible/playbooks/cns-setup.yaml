@@ -64,9 +64,13 @@
       - key: cns.setup.cns_project_name
         value: 'cns'
       - key: cns.setup.cns_username
-        value: 'admin'
+        # NOTE(vponomar): Following user just should have enough rights
+        # for creation of storage classses and secrets.
+        value: "system:admin"
       - key: cns.setup.cns_password
-        value: "{{ heketi_admin_key }}"
+        # NOTE(vponomar): by default it is empty for 'system:admin' user,
+        # update it in case it is changed during deployment.
+        value: ""
       - key: cns.deployment_type
         value: 'cns'
       - key: cns.heketi_config.heketi_server_url
@@ -109,13 +113,11 @@
             secret_name: "{{ 'heketi-secret-for-glusterfs-sc' +
                              (999999999999999 | random | to_uuid) }}"
             namespace: "cns"
-            data_key: "cGFzc3dvcmQ="
             type: "kubernetes.io/glusterfs"
           secret2:
             secret_name: "{{ 'heketi-secret-for-glusterblock-sc' +
                              (999999999999999 | random | to_uuid) }}"
             namespace: "cns"
-            data_key: "cGFzc3dvcmQ="
             type: "gluster.org/glusterblock"
     when: cns_automation_config_file_path | length > 0
     run_once: true

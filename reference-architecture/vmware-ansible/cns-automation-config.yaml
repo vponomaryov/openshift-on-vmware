@@ -38,8 +38,8 @@ cns:
         insecure_registry: "INSECURE_REGISTRY='--insecure-registry registry.access.redhat.com'"
         add_registry: "ADD_REGISTRY='--add-registry registry.access.redhat.com'"
         cns_project_name: "cns"
-        cns_username: "admin"
-        cns_password: "secret_value_for_admin_user"
+        cns_username: "system:admin"
+        cns_password: ""
 
     # 'deployment_type' can be crs_heketi_outside_openshift|crs_heketi_inside_openshift|cns
     deployment_type: "cns"
@@ -89,12 +89,10 @@ cns:
             secret1:
                 secret_name: "heketi-secret-for-glusterfs-sc"
                 namespace: "cns"
-                data_key: "cGFzc3dvcmQ="
                 type: "kubernetes.io/glusterfs"
             secret2:
                 secret_name: "heketi-secret-for-glusterblock-sc"
                 namespace: "cns"
-                data_key: "cGFzc3dvcmQ="
                 type: "gluster.org/glusterblock"
         start_count_for_pvc: 1
         pvc_size_number:
