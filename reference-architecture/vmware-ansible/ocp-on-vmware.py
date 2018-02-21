@@ -637,17 +637,6 @@ class VMwareOnOCP(object):
         if self.lb_ha_ip != '':
             self.lb_host = self.lb_ha_ip
 
-        ssh_file = 'ssh_key/ocp-installer'
-        # NOTE(vponomar): copy default SSH key only if it is not done yet
-        if os.stat(ssh_file).st_size == 0:
-            # grab the default priv key from the user"
-            command='cp -f ~/.ssh/id_rsa %s' % ssh_file
-            os.system(command)
-
-            # make sure the ssh keys have the proper permissions
-            command='chmod 600 %s' % ssh_file
-            os.system(command)
-
         for tag in tags.split(','):
             playbook = "playbooks/" + tag + ".yaml"
             tags = 'all'
