@@ -111,8 +111,6 @@ class VMwareOnOCP(object):
                 print "    wildcard_zone:"
             elif line.startswith("    load_balancer_hostname:"):
                 print "    load_balancer_hostname:"
-            elif line.startswith("    deployment_type:"):
-                print "    deployment_type:"
             elif line.startswith("    openshift_hosted_registry_storage_host:"):
                 print "    openshift_hosted_registry_storage_host:"
             elif line.startswith("    openshift_hosted_registry_storage_nfs_directory:"):
@@ -123,17 +121,6 @@ class VMwareOnOCP(object):
                 print "    openshift_hosted_metrics_storage_nfs_directory:"
             else:
                 print line,
-
-        for line in fileinput.input("playbooks/minor-update.yaml", inplace=True):
-            if line.startswith("    wildcard_zone:"):
-                print "    wildcard_zone:"
-            elif line.startswith("    load_balancer_hostname:"):
-                print "    load_balancer_hostname:"
-            elif line.startswith("    deployment_type:"):
-                print "    deployment_type:"
-            else:
-                print line,
-
 
         date = []
         today = datetime.date.today()
@@ -530,6 +517,8 @@ class VMwareOnOCP(object):
 
         install_file = "playbooks/ocp-install.yaml"
 
+        # NOTE(vponomar): following cycle is dead code while we do not add
+        # support for nfs node back again.
         for line in fileinput.input(install_file, inplace=True):
             if line.startswith("    openshift_hosted_registry_storage_host:"):
                 print ("    openshift_hosted_registry_storage_host: " +
@@ -547,21 +536,8 @@ class VMwareOnOCP(object):
                 print line,
 
         update_file = "playbooks/minor-update.yaml"
-        for ocp_file in ("playbooks/ocp-install.yaml", "playbooks/minor-update.yaml"):
-            for line in fileinput.input(ocp_file, inplace=True):
-                if line.startswith("    wildcard_zone:"):
-                    print ("    wildcard_zone: " + self.app_dns_prefix + "." +
-                           self.dns_zone)
-                elif line.startswith("    load_balancer_hostname:"):
-                    if int(self.master_nodes) > 1:
-                        lb_url = self.lb_host
-                    else:
-                        lb_url = '%s-master-0' % self.ocp_hostname_prefix
-                    print "    load_balancer_hostname: " + lb_url
-                elif line.startswith("    deployment_type:"):
-                    print "    deployment_type: " + self.deployment_type
-                else:
-                    print line,
+        if int(self.master_nodes) < 2:
+            self.lb_host = '%s-master-0' % self.ocp_hostname_prefix
 
         if self.auth_type == 'none':
             for line in fileinput.input(install_file, inplace=True):

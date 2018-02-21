@@ -413,16 +413,6 @@ class VMWareAddNode(object):
         else:
             self.lb_host = "%s-master-0" % self.ocp_hostname_prefix
 
-        # Provide values for update and add node playbooks       
-        update_file = ["playbooks/node-setup.yaml"]
-        for line in fileinput.input(update_file, inplace=True):
-            if line.startswith("    load_balancer_hostname:"):
-                print "    load_balancer_hostname: " + self.lb_host
-            elif line.startswith("    deployment_type:"):
-                print "    deployment_type: " + self.deployment_type
-            else:
-                print line,
-
     def launch_refarch_env(self):
 
         with open(self.inventory_file, 'r') as f:

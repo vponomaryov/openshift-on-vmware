@@ -55,11 +55,11 @@
     openshift_router_selector: "role=app"
     openshift_master_cluster_method: native
     openshift_cloudprovider_kind: vsphere
-    wildcard_zone:
+    wildcard_zone: "{{ app_dns_prefix }}.{{ dns_zone }}"
     osm_default_subdomain: "{{ wildcard_zone }}"
     openshift_master_default_subdomain: "{{osm_default_subdomain}}"
-    deployment_type:
-    load_balancer_hostname:
+    deployment_type: "{{ deployment_type }}"
+    load_balancer_hostname: "{{ lb_host }}"
     openshift_master_cluster_hostname: "{{ load_balancer_hostname }}"
     openshift_master_cluster_public_hostname: "{{ load_balancer_hostname }}"
     os_sdn_network_plugin_name: "{{ openshift_sdn }}"
