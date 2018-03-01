@@ -17,12 +17,28 @@
   roles:
   - setup-custom-domain-names
   - instance-groups
-  - rhsm
+  - package-repos
   - vmware-guest-setup
   - cloud-provider-setup
   - docker-storage-setup
   - openshift-volume-quota
+
 - include: add-node-prerequisite.yaml
+  when: openshift_vers in ['v3_6', 'v3_7']
+
+- include: "{{ (openshift_vers in ['v3_6', 'v3_7']) | ternary(
+      'noop.yaml',
+      lookup('env', 'VIRTUAL_ENV') +
+          '/usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml'
+  ) }} hosts=new_nodes vars_files=vars/main.yaml"
+  when: openshift_vers not in ['v3_6', 'v3_7']
+
+- include: "{{ (openshift_vers in ['v3_6', 'v3_7']) | ternary(
+      'noop.yaml',
+      lookup('env', 'VIRTUAL_ENV') +
+          '/usr/share/ansible/openshift-ansible/playbooks/init/main.yml'
+  ) }} hosts=new_nodes"
+  when: openshift_vers not in ['v3_6', 'v3_7']
 
 - name: Map domain names and IP addresses of old and new nodes to each other
   hosts: loadbalancer, master, infra, app, cns, crs, !new_nodes

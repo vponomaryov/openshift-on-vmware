@@ -4,6 +4,7 @@
 import argparse, click, fileinput, iptools, os, re, six, sys, yaml, textwrap
 from argparse import RawTextHelpFormatter
 from collections import defaultdict
+import requests
 from six.moves import configparser
 from time import time
 from shutil import copyfile
@@ -76,6 +77,12 @@ class VMWareAddNode(object):
     heketi_user_key=None
     tag=None
     verbose=0
+    docker_registry_url=None
+    docker_additional_registries=None
+    docker_insecure_registries=None
+    docker_image_tag=None
+    ose_puddle_repo=None
+    gluster_puddle_repo=None
 
     def __init__(self, load=True):
 
@@ -159,6 +166,21 @@ class VMWareAddNode(object):
         self.args = parser.parse_args()
         self.verbose = self.args.verbose
 
+    def _is_rpm_and_image_tag_compatible(self):
+        if not (self.docker_image_tag and self.ose_puddle_repo):
+            return True
+        url = self.ose_puddle_repo
+        if url[-1] == '/':
+            url += 'Packages/'
+        else:
+            url += '/Packages/'
+        resp = requests.get(url)
+        if resp.ok:
+            v = self.docker_image_tag.split('v')[-1].strip()
+            return (('atomic-openshift-%s' % v) in resp.text)
+        raise Exception(
+            "Failed to pull list of packages from '%s' url." % url)
+
     def read_ini_settings(self):
 
         ''' Read ini file settings '''
@@ -173,6 +195,12 @@ class VMWareAddNode(object):
             'container_storage_disk_type':'eagerZeroedThick',
             'heketi_admin_key': '',
             'heketi_user_key': '',
+            'docker_registry_url': '',
+            'docker_additional_registries': '',
+            'docker_insecure_registries': '',
+            'docker_image_tag': '',
+            'ose_puddle_repo': '',
+            'gluster_puddle_repo': '',
             'deployment_type':'openshift-enterprise',
             'openshift_vers':'v3_6',
             'vcenter_username':'administrator@vsphere.local',
@@ -229,6 +257,15 @@ class VMWareAddNode(object):
             'vmware', 'additional_disks_to_storage_nodes')
         self.heketi_admin_key = config.get('vmware', 'heketi_admin_key')
         self.heketi_user_key = config.get('vmware', 'heketi_user_key')
+        self.docker_registry_url = config.get('vmware', 'docker_registry_url')
+        self.docker_additional_registries = config.get(
+            'vmware', 'docker_additional_registries')
+        self.docker_insecure_registries = config.get(
+            'vmware', 'docker_insecure_registries')
+        self.docker_image_tag = (
+            config.get('vmware', 'docker_image_tag') or '').strip()
+        self.ose_puddle_repo = config.get('vmware', 'ose_puddle_repo')
+        self.gluster_puddle_repo = config.get('vmware', 'gluster_puddle_repo')
         self.deployment_type = config.get('vmware','deployment_type')
         self.openshift_vers = config.get('vmware','openshift_vers')
         self.vcenter_host = config.get('vmware', 'vcenter_host')
@@ -329,6 +366,19 @@ class VMWareAddNode(object):
         else:
             self.cns_automation_config_file_path = os.path.abspath(
                 self.cns_automation_config_file_path)
+        if self.docker_image_tag and self.docker_registry_url:
+            vers_from_reg = self.docker_registry_url.split(':')[-1].strip()
+            if not vers_from_reg == self.docker_image_tag:
+                err_count += 1
+                print ("If 'docker_image_tag' and 'docker_registry_url' are "
+                       "specified, then their image tags should match. "
+                       "docker_image_tag='%s', docker_registry_url='%s'" % (
+                           self.docker_image_tag, self.docker_registry_url))
+        if not self._is_rpm_and_image_tag_compatible():
+            err_count += 1
+            print ("OCP RPM versions and docker image tag do not match. "
+                   "Need either to change 'ose_puddle_repo' or "
+                   "'docker_image_tag' config options.")
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  vmware_ini_path
@@ -465,6 +515,8 @@ class VMWareAddNode(object):
             'additional_disks_to_storage_nodes': self.additional_disks_to_storage_nodes,
             'heketi_admin_key': self.heketi_admin_key,
             'heketi_user_key': self.heketi_user_key,
+            'ose_puddle_repo': self.ose_puddle_repo,
+            'gluster_puddle_repo': self.gluster_puddle_repo,
             'deployment_type': self.deployment_type,
             'openshift_vers': self.openshift_vers,
             'admin_key': self.admin_key,
@@ -483,6 +535,16 @@ class VMWareAddNode(object):
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
         }
+        if self.docker_registry_url:
+            playbook_vars_dict['oreg_url'] = self.docker_registry_url
+        if self.docker_additional_registries:
+            playbook_vars_dict['openshift_docker_additional_registries'] = (
+                self.docker_additional_registries)
+        if self.docker_insecure_registries:
+            playbook_vars_dict['openshift_docker_insecure_registries'] = (
+                self.docker_insecure_registries)
+        if self.docker_image_tag:
+            playbook_vars_dict['openshift_image_tag'] = self.docker_image_tag
 
         playbook_vars_str = ' '.join('%s=%s' % (k, v)
                                      for (k, v) in playbook_vars_dict.items())

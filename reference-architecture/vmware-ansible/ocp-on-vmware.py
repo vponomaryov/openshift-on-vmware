@@ -2,6 +2,7 @@
 # set ts=4 sw=4 et
 import argparse, click, datetime,  os, sys, fileinput, json, iptools, ldap, six, random, yaml
 from argparse import RawTextHelpFormatter
+import requests
 from six.moves import configparser
 
 
@@ -66,6 +67,13 @@ class VMwareOnOCP(object):
     clean=None
     vm_ipaddr_allocation_type=None,
     cns_automation_config_file_path=None,
+    docker_registry_url=None
+    docker_additional_registries=None
+    docker_insecure_registries=None
+    docker_image_tag=None
+    ose_puddle_repo=None
+    gluster_puddle_repo=None
+    web_console_install=None
 
     def __init__(self, load=True):
         if load:
@@ -208,6 +216,21 @@ class VMwareOnOCP(object):
         self.no_confirm = self.args.no_confirm
         self.clean = self.args.clean
 
+    def _is_rpm_and_image_tag_compatible(self):
+        if not (self.docker_image_tag and self.ose_puddle_repo):
+            return True
+        url = self.ose_puddle_repo
+        if url[-1] == '/':
+            url += 'Packages/'
+        else:
+            url += '/Packages/'
+        resp = requests.get(url)
+        if resp.ok:
+            v = self.docker_image_tag.split('v')[-1].strip()
+            return (('atomic-openshift-%s' % v) in resp.text)
+        raise Exception(
+            "Failed to pull list of packages from '%s' url." % url)
+
     def _read_ini_settings(self):
         ''' Read ini file settings '''
 
@@ -226,6 +249,13 @@ class VMwareOnOCP(object):
             'vm_network':'VM Network',
             'vm_ipaddr_allocation_type': 'static',
             'cns_automation_config_file_path': '',
+            'docker_registry_url': '',
+            'docker_additional_registries': '',
+            'docker_insecure_registries': '',
+            'docker_image_tag': '',
+            'web_console_install': '',
+            'ose_puddle_repo': '',
+            'gluster_puddle_repo': '',
             'rhel_subscription_pool':'Red Hat OpenShift Container Platform, Premium*',
             'openshift_sdn':'redhat/openshift-ovs-subnet',
             'byo_lb':'False',
@@ -286,6 +316,18 @@ class VMwareOnOCP(object):
         self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
         self.cns_automation_config_file_path = config.get(
             'vmware', 'cns_automation_config_file_path')
+        self.docker_registry_url = (
+            config.get('vmware', 'docker_registry_url') or '').strip()
+        self.docker_additional_registries = config.get(
+            'vmware', 'docker_additional_registries')
+        self.docker_insecure_registries = config.get(
+            'vmware', 'docker_insecure_registries')
+        self.docker_image_tag = (
+            config.get('vmware', 'docker_image_tag') or '').strip()
+        self.web_console_install = (
+            config.get('vmware', 'web_console_install') or '').strip()
+        self.ose_puddle_repo = config.get('vmware', 'ose_puddle_repo')
+        self.gluster_puddle_repo = config.get('vmware', 'gluster_puddle_repo')
         self.rhel_subscription_user = config.get('vmware', 'rhel_subscription_user')
         self.rhel_subscription_pass = config.get('vmware', 'rhel_subscription_pass')
         self.rhel_subscription_server = config.get('vmware', 'rhel_subscription_server')
@@ -345,6 +387,19 @@ class VMwareOnOCP(object):
         else:
             self.cns_automation_config_file_path = os.path.abspath(
                 self.cns_automation_config_file_path)
+        if self.docker_image_tag and self.docker_registry_url:
+            vers_from_reg = self.docker_registry_url.split(':')[-1].strip()
+            if not vers_from_reg == self.docker_image_tag:
+                err_count += 1
+                print ("If 'docker_image_tag' and 'docker_registry_url' are "
+                       "specified, then their image tags should match. "
+                       "docker_image_tag='%s', docker_registry_url='%s'" % (
+                           self.docker_image_tag, self.docker_registry_url))
+        if not self._is_rpm_and_image_tag_compatible():
+            err_count += 1
+            print ("OCP RPM versions and docker image tag do not match. "
+                   "Need either to change 'ose_puddle_repo' or "
+                   "'docker_image_tag' config options.")
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  self.vmware_ini_path
@@ -653,6 +708,8 @@ class VMwareOnOCP(object):
             'vm_ipaddr_allocation_type': self.vm_ipaddr_allocation_type,
             'cns_automation_config_file_path': (
                 self.cns_automation_config_file_path),
+            'ose_puddle_repo': self.ose_puddle_repo,
+            'gluster_puddle_repo': self.gluster_puddle_repo,
             'wildcard_zone': self.wildcard_zone,
             'console_port': self.console_port,
             'cluster_id': self.cluster_id,
@@ -676,6 +733,34 @@ class VMwareOnOCP(object):
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
         }
+        if self.docker_registry_url:
+            playbook_vars_dict['oreg_url'] = self.docker_registry_url
+            # NOTE(vponomar): following is workaround for the logic
+            # from 'openshift-ansible' lib where deployed apps
+            # such as 'registry-console' and 'web console' don't pick up
+            # custom registry automatically and continue using default one.
+            if self.deployment_type != 'openshift-enterprise':
+                cockpit_image_prefix = 'openshift/'
+                web_console_prefix = 'openshift/origin-'
+            else:
+                cockpit_image_prefix = 'openshift3/'
+                web_console_prefix = 'openshift3/ose-'
+            reg_url = self.docker_registry_url.split(cockpit_image_prefix)[0]
+            playbook_vars_dict['openshift_cockpit_deployer_prefix'] = (
+                '%s%s' % (reg_url, cockpit_image_prefix))
+            playbook_vars_dict['openshift_web_console_prefix'] = (
+                '%s%s' % (reg_url, web_console_prefix))
+        if self.docker_additional_registries:
+            playbook_vars_dict['openshift_docker_additional_registries'] = (
+                self.docker_additional_registries)
+        if self.docker_insecure_registries:
+            playbook_vars_dict['openshift_docker_insecure_registries'] = (
+                self.docker_insecure_registries)
+        if self.docker_image_tag:
+            playbook_vars_dict['openshift_image_tag'] = self.docker_image_tag
+        if self.web_console_install:
+            playbook_vars_dict['openshift_web_console_install'] = (
+                self.web_console_install)
 
         playbook_vars_str = ' '.join('%s=%s' % (k, v)
                                      for (k, v) in playbook_vars_dict.items())

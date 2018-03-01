@@ -1,9 +1,14 @@
 ---
-- include: "{{ lookup('env', 'VIRTUAL_ENV') }}/usr/share/ansible/openshift-ansible/playbooks/byo/openshift-node/scaleup.yml"
+- include: "{{
+      lookup('env', 'VIRTUAL_ENV')
+  }}/usr/share/ansible/openshift-ansible/playbooks/{{
+      (openshift_vers in ['v3_6', 'v3_7']) | ternary('byo', '')
+  }}/openshift-node/scaleup.yml"
   vars:
     debug_level: 2
     openshift_debug_level: "{{ debug_level }}"
     openshift_node_debug_level: "{{ node_debug_level | default(debug_level, true) }}"
+    openshift_disable_check: docker_image_availability
     osm_controller_args:
     osm_api_server_args:
     openshift_node_kubelet_args:
@@ -23,6 +28,12 @@
     openshift_node_local_quota_per_fsgroup: 512Mi
     openshift_master_cluster_method: native
     openshift_cloudprovider_kind: vsphere
+    openshift_cloudprovider_vsphere_host: "{{ vcenter_host }}"
+    openshift_cloudprovider_vsphere_username: "{{ vcenter_username }}"
+    openshift_cloudprovider_vsphere_password: "{{ vcenter_password }}"
+    openshift_cloudprovider_vsphere_datacenter: "{{ vcenter_datacenter }}"
+    openshift_cloudprovider_vsphere_datastore: "{{ vcenter_datastore }}"
+    openshift_cloudprovider_vsphere_folder: "{{ vcenter_folder }}"
     os_sdn_network_plugin_name: "{{ openshift_sdn }}"
     deployment_type: "{{ deployment_type }}"
     load_balancer_hostname: "{{ lb_host }}"
