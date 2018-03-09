@@ -85,8 +85,11 @@ class VMWareAddNode(object):
         if not os.path.exists(self.inventory_file):
             self.create_inventory_file()
         elif os.path.exists(self.inventory_file) or self.args.create_inventory:
-            if click.confirm('Overwrite the existing inventory file?'):
+            if self.args.no_confirm:
                 self.create_inventory_file()
+            else:
+                if click.confirm('Overwrite the existing inventory file?'):
+                    self.create_inventory_file()
         if os.path.exists(self.inventory_file):
             self.launch_refarch_env()
 
