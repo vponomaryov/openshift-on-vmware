@@ -396,6 +396,24 @@ class VMWareInventory(object):
         self.debugl('PREFILTER_HOSTS:')
         for i in inventory['all']['hosts']:
             self.debugl(i)
+
+        # Create special host filter removing all the hosts which
+        # are not related to the configured cluster.
+        if six.PY3:
+            ocp_config = configparser.ConfigParser()
+        else:
+            ocp_config = configparser.SafeConfigParser()
+        default_ocp_config = os.path.join(
+            os.path.dirname(__file__), '../../../ocp-on-vmware.ini')
+        ocp_ini_path = os.environ.get('VMWARE_INI_PATH', default_ocp_config)
+        ocp_ini_path = os.path.expanduser(os.path.expandvars(ocp_ini_path))
+        ocp_config.read(ocp_ini_path)
+        cluster_id_filter = (
+            "{{ config.annotation is not none and "
+            "'%s' in config.annotation }}") % ocp_config.get(
+                'vmware', 'cluster_id')
+        self.host_filters.append(cluster_id_filter)
+
         # Apply host filters
         for hf in self.host_filters:
             if not hf:
