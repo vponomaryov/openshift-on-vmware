@@ -634,9 +634,6 @@ class VMwareOnOCP(object):
         if self.tag:
             tags = self.tag
 
-        if self.lb_ha_ip != '':
-            self.lb_host = self.lb_ha_ip
-
         for tag in tags.split(','):
             playbook = "playbooks/" + tag + ".yaml"
             tags = 'all'
