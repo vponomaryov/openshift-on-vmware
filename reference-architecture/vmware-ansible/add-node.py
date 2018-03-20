@@ -545,6 +545,8 @@ class VMWareAddNode(object):
                 self.docker_insecure_registries)
         if self.docker_image_tag:
             playbook_vars_dict['openshift_image_tag'] = self.docker_image_tag
+        if self.openshift_vers in ('v3_6', 'v3_7'):
+            playbook_vars_dict['docker_version'] = '1.12.6'
 
         playbook_vars_str = ' '.join('%s=%s' % (k, v)
                                      for (k, v) in playbook_vars_dict.items())

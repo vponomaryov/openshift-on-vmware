@@ -27,7 +27,7 @@
         - python-six
         - iptables
         - iptables-services
-        - docker
+        - docker{{ '-' + docker_version if docker_version is defined else '' }}
 
     - name: be sure katello-agent is installed
       yum: name=katello-agent state=installed

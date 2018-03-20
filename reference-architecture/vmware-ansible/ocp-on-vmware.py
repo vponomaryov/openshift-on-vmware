@@ -761,6 +761,8 @@ class VMwareOnOCP(object):
         if self.web_console_install:
             playbook_vars_dict['openshift_web_console_install'] = (
                 self.web_console_install)
+        if self.openshift_vers in ('v3_6', 'v3_7'):
+            playbook_vars_dict['docker_version'] = '1.12.6'
 
         playbook_vars_str = ' '.join('%s=%s' % (k, v)
                                      for (k, v) in playbook_vars_dict.items())
