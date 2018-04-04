@@ -49,6 +49,8 @@ cns:
     trusted_storage_pool_list:
         - [gluster_server_ip_address1, gluster_server_ip_address2, gluster_server_ip_address3]
     heketi_config:
+        heketi_dc_name: name_of_the_heketi_deployment_config
+        heketi_service_name: name_of_the_heketi_service
         heketi_client_node: master_ip_addr
         heketi_server_url: "http://heketi.url"
         heketi_cli_user: "admin"

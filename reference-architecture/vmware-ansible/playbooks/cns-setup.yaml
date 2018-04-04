@@ -70,6 +70,10 @@
         value: ""
       - key: cns.deployment_type
         value: 'cns'
+      - key: cns.heketi_config.heketi_dc_name
+        value: "heketi-cns"
+      - key: cns.heketi_config.heketi_service_name
+        value: "heketi-cns"
       - key: cns.heketi_config.heketi_server_url
         value: "http://heketi-cns-cns.{{ app_dns_prefix }}.{{ dns_zone }}"
       - key: cns.heketi_config.heketi_cli_user
