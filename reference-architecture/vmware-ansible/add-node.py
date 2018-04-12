@@ -164,7 +164,7 @@ class VMWareAddNode(object):
         - clean (remove vms and unregister them from RHN also remove storage classes or secrets'''
         parser = argparse.ArgumentParser(description='Add new nodes to an existing OCP deployment', formatter_class=RawTextHelpFormatter)
         parser.add_argument('--node_type', action='store', default='app', help='Specify the node label: app, infra, storage')
-        parser.add_argument('--node_number', action='store', default='1', help='Specify the number of nodes to add')
+        parser.add_argument('--node_number', action='store', default='3', help='Specify the number of nodes to add')
         parser.add_argument('--create_inventory', action='store_true', help='Helper script to create json inventory file and exit')
         parser.add_argument('--no_confirm', default=None, help='Skip confirmation prompt')
         parser.add_argument('--tag', default=None, help=tag_help)
@@ -340,7 +340,9 @@ class VMWareAddNode(object):
         err_count=0
 
         if 'storage' in self.node_type:
-            self.node_number = 3
+            if self.node_number < 3:
+                err_count += 1
+                print ("Node number for CNS and CRS should be 3 or more.")
             if self.container_storage is None:
                 print "Please specify crs or cns in container_storage in the %s." % vmware_ini_path
             elif self.container_storage in ('cns', 'crs'):
