@@ -166,7 +166,9 @@ class VMWareAddNode(object):
         parser.add_argument('--node_type', action='store', default='app', help='Specify the node label: app, infra, storage')
         parser.add_argument('--node_number', action='store', default='3', help='Specify the number of nodes to add')
         parser.add_argument('--create_inventory', action='store_true', help='Helper script to create json inventory file and exit')
-        parser.add_argument('--no_confirm', default=None, help='Skip confirmation prompt')
+        parser.add_argument(
+            '--no_confirm', action='store_true',
+            help='Skip confirmation prompt')
         parser.add_argument('--tag', default=None, help=tag_help)
         parser.add_argument('--verbose', default=None, action='store_true', help='Verbosely display commands')
         self.args = parser.parse_args()
