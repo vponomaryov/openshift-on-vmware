@@ -71,7 +71,7 @@
       hostname: "{{ item.value.guestname }}"
   with_dict: "{{ host_inventory }}"
   when: "item.value.guesttype in ['app', 'master', 'infra']"
-  async: 600
+  async: "{{ (network_parameters | length) * 300 }}"
   poll: 0
   register: async_vms_creation
 
@@ -83,7 +83,7 @@
     loop_var: "async_result_item"
   register: async_poll_results
   until: async_poll_results.finished
-  retries: 120
+  retries: "{{ (network_parameters | length) * 50 }}"
 
 - name: Read info of newly created VMs
   vmware_guest_tools_wait:
