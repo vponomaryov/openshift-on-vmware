@@ -694,7 +694,7 @@ class VMwareOnOCP(object):
             click.echo('We are running: %s' % command)
             status = os.system(command)
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) != 0:
-                return os.WEXITSTATUS(status)
+                sys.exit(os.WEXITSTATUS(status))
 
 if __name__ == '__main__':
     VMwareOnOCP()
