@@ -106,7 +106,7 @@
   set_fact:
     glusterfs_devices: "{{ glusterfs_devices | default([]) }} +
                         {{ ['/dev/sd' + 'defghijklmnopqrstuvwxyz'[item.0]] }}"
-  with_indexed_items: disks_info
+  with_indexed_items: "{{ disks_info[3::] }}"
 
 - name: Add CRS production VMs to inventory
   add_host:
