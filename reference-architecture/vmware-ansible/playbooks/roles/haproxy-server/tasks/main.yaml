@@ -1,6 +1,10 @@
 ---
 - name: Ensure HAProxy is installed.
   yum: name=haproxy state=installed
+  retries: 5
+  delay: 5
+  register: result
+  until: result is succeeded
 
 - name: Get HAProxy version.
   command: haproxy -v

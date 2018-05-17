@@ -1,6 +1,10 @@
 ---
 - name: Install NFS server
   package: name=nfs-utils use=yum state=present
+  retries: 5
+  delay: 5
+  register: result
+  until: result is succeeded
 
 - name: configure NFS services
   file: src=etc-sysconfig-nfs dest=/etc/sysconfig/nfs owner=root group=root mode=0644

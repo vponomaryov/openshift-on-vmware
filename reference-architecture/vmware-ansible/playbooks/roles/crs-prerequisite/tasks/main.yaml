@@ -10,6 +10,10 @@
   with_items:
   - 'iptables'
   - 'iptables-services'
+  retries: 5
+  delay: 5
+  register: result
+  until: result is succeeded
 
 - name: Enable Gluster 3 repo 
   import_role:
@@ -22,6 +26,10 @@
   with_items:
   - 'redhat-storage-server'
   - 'heketi-client'
+  retries: 5
+  delay: 5
+  register: result
+  until: result is succeeded
 
 - name: Stop firewalld
   service:

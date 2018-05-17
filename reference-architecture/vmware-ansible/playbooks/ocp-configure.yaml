@@ -19,6 +19,10 @@
     package:
       name: heketi-client
       state: latest
+    retries: 5
+    delay: 5
+    register: result
+    until: result is succeeded
 
 - hosts: single_master
   gather_facts: no

@@ -6,6 +6,10 @@
   with_items:
   - heketi
   - heketi-client
+  retries: 5
+  delay: 5
+  register: result
+  until: result is succeeded
 
 - name: Copy ssh private key in place
   template:

@@ -5,6 +5,10 @@
       with_items:
         - keepalived
         - psmisc
+      retries: 5
+      delay: 5
+      register: result
+      until: result is succeeded
 
     - name: Determine interface name on single node
       set_fact:
