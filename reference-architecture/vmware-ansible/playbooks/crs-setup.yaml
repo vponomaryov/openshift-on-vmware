@@ -35,3 +35,4 @@
           container_storage_disks.split(',') | map('int') | list | max }}"
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_executor: ssh
+      openshift_storage_glusterfs_timeout: 600
