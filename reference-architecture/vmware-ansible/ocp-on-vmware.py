@@ -638,6 +638,7 @@ class VMwareOnOCP(object):
             'rhsm_activation_key': self.rhsm_activation_key,
             'rhsm_org_id': self.rhsm_org_id,
             'openshift_sdn': self.openshift_sdn,
+            'openshift_use_openshift_sdn': True,
             'containerized': self.containerized,
             'container_storage': self.container_storage,
             'openshift_hosted_metrics_deploy': (

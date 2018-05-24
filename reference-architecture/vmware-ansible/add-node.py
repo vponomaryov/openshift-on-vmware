@@ -558,6 +558,7 @@ class VMWareAddNode(object):
             'rhsm_activation_key': self.rhsm_activation_key,
             'rhsm_org_id': self.rhsm_org_id,
             'openshift_sdn': self.openshift_sdn,
+            'openshift_use_openshift_sdn': True,
             'lb_host': self.lb_host,
             'node_type': self.node_type,
             'ocp_hostname_prefix': self.ocp_hostname_prefix,
