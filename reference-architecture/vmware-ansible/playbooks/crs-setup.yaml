@@ -36,6 +36,12 @@
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_executor: ssh
       openshift_storage_glusterfs_timeout: 600
+  - name: Allow to expand PVCs using 'glusterfs' storageclass.
+    oc_edit:
+      kind: sc
+      name: glusterfs-{{ glusterfs_name }}
+      content:
+        allowVolumeExpansion: true
 
 - name: Restart dnsmasq on all the nodes to apply all the changes we made
   hosts: allnodes

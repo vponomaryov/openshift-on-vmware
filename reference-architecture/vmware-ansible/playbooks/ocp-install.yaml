@@ -32,11 +32,15 @@
     openshift_enable_service_catalog: false
     template_service_broker_install: false
     osm_controller_args:
+      feature-gates:
+      - "ExpandPersistentVolumes=true"
       cloud-provider:
       - "vsphere"
       cloud-config:
       - "/etc/origin/cloudprovider/vsphere.conf"
     osm_api_server_args:
+      feature-gates:
+      - "ExpandPersistentVolumes=true"
       cloud-provider:
       - "vsphere"
       cloud-config:
@@ -48,6 +52,12 @@
       - "/etc/origin/cloudprovider/vsphere.conf"
       node-labels:
       - "role={{ openshift_node_labels.role }}"
+    openshift_master_admission_plugin_config:
+      PersistentVolumeClaimResize:
+        configuration:
+          apiVersion: v1
+          disable: false
+          kind: DefaultAdmissionConfig
     openshift_master_debug_level: "{{ master_debug_level | default(debug_level, true) }}"
     openshift_master_access_token_max_seconds: 2419200
     openshift_hosted_router_replicas: 1
