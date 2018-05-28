@@ -83,3 +83,11 @@
       kind: 'AllowAllPasswordIdentityProvider'
       login: True
       challenge: True
+
+- hosts: allnodes
+  gather_facts: no
+  ignore_errors: no
+  tasks:
+  - service:
+      name: dnsmasq
+      state: restarted

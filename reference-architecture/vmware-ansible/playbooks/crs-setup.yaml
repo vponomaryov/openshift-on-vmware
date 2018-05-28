@@ -36,3 +36,10 @@
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_executor: ssh
       openshift_storage_glusterfs_timeout: 600
+
+- name: Restart dnsmasq on all the nodes to apply all the changes we made
+  hosts: allnodes
+  tasks:
+  - service:
+      name: dnsmasq
+      state: restarted

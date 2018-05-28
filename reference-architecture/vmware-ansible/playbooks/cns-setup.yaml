@@ -38,7 +38,7 @@
       router_ip: "{{ router_get.stdout_lines[1].strip() }}"
 
 - name: Update dnsmasq config with custom domain zone for apps
-  hosts: master
+  hosts: allnodes
   tasks:
   - lineinfile:
       path: /etc/dnsmasq.conf
