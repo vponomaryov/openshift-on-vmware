@@ -6,6 +6,13 @@
       name: openshift_storage_glusterfs
       tasks_from: kernel_modules.yml
 
+- name: Restart dnsmasq to make our custom configs take effect
+  hosts: allnodes
+  tasks:
+  - service:
+      name: dnsmasq
+      state: restarted
+
 - hosts: single_master
   tasks:
   - name: Perform actions on master node which are required to install CNS 
