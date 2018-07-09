@@ -45,7 +45,7 @@
 - name: Get IP address of the node with router
   hosts: single_master
   tasks:
-  - command: "oc get endpoints router -o=custom-columns=:.subsets[*].addresses[0].ip"
+  - command: "oc get endpoints router -o=custom-columns=:.subsets[*].addresses[0].ip -n default"
     register: router_get
   - set_fact:
       router_ip: "{{ router_get.stdout_lines[1].strip() }}"
