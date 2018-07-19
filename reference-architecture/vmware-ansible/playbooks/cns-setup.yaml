@@ -132,6 +132,7 @@
             secretnamespace: "cns" 
             secretname: "{{ 'heketi-secret-for-glusterfs-sc' +
                             (999999999999999 | random | to_uuid) }}"
+            volumenameprefix: "cns-vol"
           storage_class2:
             name:  "{{ 'sc-glusterblock' + (999999999999999 | random | to_uuid) }}"
             provisioner: "gluster.org/glusterblock"

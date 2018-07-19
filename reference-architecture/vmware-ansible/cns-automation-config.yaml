@@ -77,6 +77,7 @@ cns:
                 restuser: "admin"
                 secretnamespace: "cns"
                 secretname: "heketi-secret-for-glusterfs-sc"
+                volumenameprefix: "cns-vol"
             storage_class2:
                 name:  "sc-glusterblock"
                 provisioner: "gluster.org/glusterblock"
