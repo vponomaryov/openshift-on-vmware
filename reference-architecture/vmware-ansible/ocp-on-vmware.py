@@ -669,6 +669,7 @@ class VMwareOnOCP(object):
         if self.docker_additional_registries:
             playbook_vars_dict['openshift_docker_additional_registries'] = (
                 self.docker_additional_registries)
+            playbook_vars_dict['openshift_docker_ent_reg'] = ''
         if self.docker_insecure_registries:
             playbook_vars_dict['openshift_docker_insecure_registries'] = (
                 self.docker_insecure_registries)
