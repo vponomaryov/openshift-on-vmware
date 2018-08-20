@@ -24,8 +24,6 @@
       openshift_storage_glusterfs_is_native: true
       openshift_storage_glusterfs_storageclass: true
       openshift_storage_glusterfs_block_storageclass: true
-      openshift_storage_glusterfs_block_host_vol_size: "{{
-          container_storage_disks.split(',') | map('int') | list | max }}"
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_admin_key: "{{
           (heketi_admin_key.strip() != '') |

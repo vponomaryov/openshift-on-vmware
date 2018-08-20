@@ -71,6 +71,7 @@ class VMWareAddNode(object):
     node_number=None
     container_storage=None
     container_storage_disks=None
+    container_storage_block_hosting_volume_size=None
     container_storage_disk_type=None
     additional_disks_to_storage_nodes=None
     heketi_admin_key=None
@@ -199,6 +200,7 @@ class VMWareAddNode(object):
             'console_port':'8443',
             'container_storage':'none',
             'container_storage_disks':'100,600',
+            'container_storage_block_hosting_volume_size': '',
             'additional_disks_to_storage_nodes': '100',
             'container_storage_disk_type':'eagerZeroedThick',
             'heketi_admin_key': '',
@@ -265,6 +267,8 @@ class VMWareAddNode(object):
         self.cluster_id = config.get('vmware', 'cluster_id')
         self.container_storage = config.get('vmware', 'container_storage')
         self.container_storage_disks = config.get('vmware', 'container_storage_disks')
+        self.container_storage_block_hosting_volume_size = config.get(
+            'vmware', 'container_storage_block_hosting_volume_size')
         self.container_storage_disk_type = config.get(
             'vmware', 'container_storage_disk_type')
         self.additional_disks_to_storage_nodes = config.get(
@@ -378,6 +382,15 @@ class VMWareAddNode(object):
             print ("'container_storage_disks' has improper value - "
                    "'%s'. Only integers separated with comma are allowed." % (
                        self.container_storage_disks))
+        if self.container_storage_block_hosting_volume_size:
+            try:
+                self.container_storage_block_hosting_volume_size = int(
+                    self.container_storage_block_hosting_volume_size)
+            except ValueError:
+                err_count += 1
+                print ("'container_storage_block_hosting_volume_size' can be "
+                       "either empty or integer. Provided value is '%s'" % (
+                           self.container_storage_block_hosting_volume_size))
         if (self.additional_disks_to_storage_nodes and not re.search(
                 r'^[0-9]*(,[0-9]*)*$', self.additional_disks_to_storage_nodes)):
             err_count += 1
@@ -571,6 +584,9 @@ class VMWareAddNode(object):
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
         }
+        if self.container_storage_block_hosting_volume_size:
+            playbook_vars_dict['openshift_storage_glusterfs_block_host_vol_size'] = (
+                self.container_storage_block_hosting_volume_size)
         if self.docker_registry_url:
             playbook_vars_dict['oreg_url'] = self.docker_registry_url
         if self.docker_additional_registries:
