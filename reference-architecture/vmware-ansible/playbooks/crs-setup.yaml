@@ -33,7 +33,6 @@
       openshift_storage_glusterfs_block_storageclass: true
       openshift_storage_glusterfs_s3_deploy: false
       openshift_storage_glusterfs_heketi_executor: ssh
-      openshift_storage_glusterfs_timeout: 600
   - name: Allow to expand PVCs using 'glusterfs' storageclass.
     oc_edit:
       kind: sc

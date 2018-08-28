@@ -32,7 +32,6 @@
           (heketi_user_key.strip() != '') |
               ternary(heketi_user_key.strip(), omit) }}"
       openshift_storage_glusterfs_heketi_topology_load: true
-      openshift_storage_glusterfs_timeout: 600
   - name: Allow to expand PVCs using 'glusterfs' storageclass.
     oc_edit:
       kind: sc

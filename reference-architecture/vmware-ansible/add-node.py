@@ -74,6 +74,7 @@ class VMWareAddNode(object):
     container_storage_block_hosting_volume_size=None
     container_storage_disk_type=None
     additional_disks_to_storage_nodes=None
+    container_storage_glusterfs_timeout=None
     heketi_admin_key=None
     heketi_user_key=None
     tag=None
@@ -203,6 +204,7 @@ class VMWareAddNode(object):
             'container_storage_block_hosting_volume_size': '',
             'additional_disks_to_storage_nodes': '100',
             'container_storage_disk_type':'eagerZeroedThick',
+            'container_storage_glusterfs_timeout': '',
             'heketi_admin_key': '',
             'heketi_user_key': '',
             'docker_registry_url': '',
@@ -273,6 +275,8 @@ class VMWareAddNode(object):
             'vmware', 'container_storage_disk_type')
         self.additional_disks_to_storage_nodes = config.get(
             'vmware', 'additional_disks_to_storage_nodes')
+        self.container_storage_glusterfs_timeout = config.get(
+            'vmware', 'container_storage_glusterfs_timeout')
         self.heketi_admin_key = config.get('vmware', 'heketi_admin_key')
         self.heketi_user_key = config.get('vmware', 'heketi_user_key')
         self.docker_registry_url = config.get('vmware', 'docker_registry_url')
@@ -397,6 +401,15 @@ class VMWareAddNode(object):
             print ("'additional_disks_to_storage_nodes' has improper "
                    "value - '%s'. Only integers separated with comma "
                    "are allowed." % self.additional_disks_to_storage_nodes)
+        if self.container_storage_glusterfs_timeout:
+            try:
+                self.container_storage_glusterfs_timeout = int(
+                    self.container_storage_glusterfs_timeout)
+            except ValueError:
+                err_count += 1
+                print ("'container_storage_glusterfs_timeout' can be "
+                       "either empty or integer. Provided value is '%s'" % (
+                           self.container_storage_glusterfs_timeout))
         if (self.cns_automation_config_file_path and
                 not os.path.exists(
                     os.path.abspath(self.cns_automation_config_file_path))):
@@ -587,6 +600,9 @@ class VMWareAddNode(object):
         if self.container_storage_block_hosting_volume_size:
             playbook_vars_dict['openshift_storage_glusterfs_block_host_vol_size'] = (
                 self.container_storage_block_hosting_volume_size)
+        if self.container_storage_glusterfs_timeout:
+            playbook_vars_dict['openshift_storage_glusterfs_timeout'] = (
+                self.container_storage_glusterfs_timeout)
         if self.docker_registry_url:
             playbook_vars_dict['oreg_url'] = self.docker_registry_url
         if self.docker_additional_registries:
