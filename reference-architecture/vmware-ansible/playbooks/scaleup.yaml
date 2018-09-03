@@ -7,7 +7,7 @@
                    'noop.yaml')
            }}"
 
-- include: "{{ (openshift_vers in ['v3_9', 'v3_10']) |
+- include: "{{ (openshift_vers in ['v3_9']) |
                ternary(
                    lookup('env', 'VIRTUAL_ENV') +
                        '/usr/share/ansible/openshift-ansible/playbooks/' +
@@ -16,9 +16,9 @@
            }}"
 
 # NOTE(vponomar): following playbooks are what we need from
-# 'playbooks/openshift-node/scaleup.yml' playbook in OCP3.11
+# 'playbooks/openshift-node/scaleup.yml' playbook in OCP3.10 and OCP3.11
 # It may be changed for OCP3.11+ versions.
-- include: "{{ (openshift_vers not in ['v3_6', 'v3_7', 'v3_9', 'v3_10']) | 
+- include: "{{ (openshift_vers not in ['v3_6', 'v3_7', 'v3_9']) | 
                ternary(
                    lookup('env', 'VIRTUAL_ENV') +
                        '/usr/share/ansible/openshift-ansible/playbooks/' +
@@ -26,7 +26,7 @@
                    'noop.yaml')
            }}"
 
-- include: "{{ (openshift_vers not in ['v3_6', 'v3_7', 'v3_9', 'v3_10']) | 
+- include: "{{ (openshift_vers not in ['v3_6', 'v3_7', 'v3_9']) | 
                ternary(
                    lookup('env', 'VIRTUAL_ENV') +
                        '/usr/share/ansible/openshift-ansible/playbooks/' +
