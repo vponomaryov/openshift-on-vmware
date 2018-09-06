@@ -666,15 +666,19 @@ class VMWareAddNode(object):
             status = os.system(command)
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) != 0:
                 sys.exit(os.WEXITSTATUS(status))
-            else:
-                print "Successful run!"
-                if not click.confirm('Update INI?'):
-                    sys.exit(0)
-                self.update_ini_file()
-                if not click.confirm('Delete inventory file?'):
-                    sys.exit(0)
-                print "Removing the existing %s file" % self.inventory_file
-                os.remove(self.inventory_file)
+
+        command = "ansible-playbook -i %smaster-0, playbooks/get_ocp_info.yaml" % (
+            "%s-" % self.ocp_hostname_prefix
+            if self.ocp_hostname_prefix else "")
+        os.system(command)
+
+        print "Successful run!"
+        if click.confirm('Update INI?'):
+            self.update_ini_file()
+        if click.confirm('Delete inventory file?'):
+            print "Removing the existing %s file" % self.inventory_file
+            os.remove(self.inventory_file)
+        sys.exit(0)
 
 if __name__ == '__main__':
     VMWareAddNode()
