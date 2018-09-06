@@ -28,6 +28,7 @@
         - iptables
         - iptables-services
         - docker{{ '-' + docker_version if docker_version is defined else '' }}
+        - dnsmasq
       retries: 5
       delay: 5
       register: result

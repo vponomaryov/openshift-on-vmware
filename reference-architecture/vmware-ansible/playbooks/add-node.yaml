@@ -106,3 +106,10 @@
   - vars/main.yaml
   roles:
   - ../../../roles/router-scaleup
+
+- hosts: allnodes
+  gather_facts: no
+  become: no
+  tasks:
+  - name: Make sure dnsmasq is running, enabled and restarted
+    service: name=dnsmasq state=restarted enabled=yes

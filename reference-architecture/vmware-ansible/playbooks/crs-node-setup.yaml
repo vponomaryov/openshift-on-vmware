@@ -29,3 +29,10 @@
     - vars/main.yaml
   roles:
     - setup-custom-domain-names
+
+- hosts: allnodes
+  gather_facts: no
+  become: no
+  tasks:
+  - name: be sure dnsmasq is running and enabled
+    service: name=dnsmasq state=restarted enabled=yes
