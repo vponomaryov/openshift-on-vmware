@@ -24,11 +24,11 @@
       openshift_storage_glusterfs_heketi_is_native: false
       openshift_storage_glusterfs_heketi_url: "{{ ansible_default_ipv4.address }}"
       openshift_storage_glusterfs_heketi_admin_key: "{{
-          (heketi_admin_key.strip() != '') |
-              ternary(heketi_admin_key.strip(), omit) }}"
+          (dp_tool_heketi_admin_key.strip() != '') |
+              ternary(dp_tool_heketi_admin_key.strip(), omit) }}"
       openshift_storage_glusterfs_heketi_user_key: "{{
-          (heketi_user_key.strip() != '') |
-              ternary(heketi_user_key.strip(), omit) }}"
+          (dp_tool_heketi_user_key.strip() != '') |
+              ternary(dp_tool_heketi_user_key.strip(), omit) }}"
       openshift_storage_glusterfs_storageclass: true
       openshift_storage_glusterfs_block_storageclass: true
       openshift_storage_glusterfs_s3_deploy: false
