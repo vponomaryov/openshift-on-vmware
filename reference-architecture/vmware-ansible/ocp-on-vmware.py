@@ -713,20 +713,21 @@ class VMwareOnOCP(object):
         playbook_vars_str = ' '.join('%s=%s' % (k, v)
                                      for (k, v) in playbook_vars_dict.items())
 
-        for tag in tags.split(','):
-            command = (
-                "ansible-playbook"
-                " --extra-vars '@./infrastructure.json'"
-                " --tags all"
-                " -e '%s' playbooks/%s.yaml") % (playbook_vars_str, tag)
+        command = (
+            "ansible-playbook"
+            " --extra-vars '@./infrastructure.json'"
+            " --tags %s"
+            " -e '%s' playbooks/ocp-end-to-end.yaml"
+        ) % (tags, playbook_vars_str)
 
-            if self.verbose > 0:
-                command += " -vvvvvv"
+        if self.verbose > 0:
+            command += " -vvvvvv"
 
-            click.echo('We are running: %s' % command)
-            status = os.system(command)
-            if os.WIFEXITED(status) and os.WEXITSTATUS(status) != 0:
-                sys.exit(os.WEXITSTATUS(status))
+        click.echo('We are running: %s' % command)
+        status = os.system(command)
+        if os.WIFEXITED(status) and os.WEXITSTATUS(status) != 0:
+            sys.exit(os.WEXITSTATUS(status))
+
 
 if __name__ == '__main__':
     VMwareOnOCP()

@@ -173,3 +173,9 @@
   - service:
       name: dnsmasq
       state: restarted
+
+- name: Run yum_update command on all the nodes and then reboot them
+  hosts: localhost
+  gather_facts: no
+  roles:
+  - yum-update-and-reboot

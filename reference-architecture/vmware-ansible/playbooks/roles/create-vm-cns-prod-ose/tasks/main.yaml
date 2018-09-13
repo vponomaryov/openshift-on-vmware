@@ -100,6 +100,9 @@
                       {item.instance.hw_name: (
                            item.instance.hw_eth0.ipaddresses | ipv4 | first)},
                       recursive=True) }}"
+    hostnames_for_reboot: "{{
+        (hostnames_for_reboot | default([])) +
+        [(item.instance.hw_eth0.ipaddresses | ipv4 | first)] }}"
   with_items: "{{ facts.results }}"
 
 - name: Define glusterfs devices

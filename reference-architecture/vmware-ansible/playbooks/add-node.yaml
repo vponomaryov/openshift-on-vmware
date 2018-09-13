@@ -113,3 +113,9 @@
   tasks:
   - name: Make sure dnsmasq is running, enabled and restarted
     service: name=dnsmasq state=restarted enabled=yes
+
+- hosts: localhost
+  gather_facts: no
+  become: no
+  roles:
+  - yum-update-and-reboot
