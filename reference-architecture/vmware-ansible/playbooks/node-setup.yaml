@@ -4,7 +4,6 @@
     debug_level: 2
     openshift_debug_level: "{{ debug_level }}"
     openshift_node_debug_level: "{{ node_debug_level | default(debug_level, true) }}"
-    openshift_disable_check: docker_image_availability
     osm_controller_args:
     osm_api_server_args:
     openshift_node_kubelet_args:

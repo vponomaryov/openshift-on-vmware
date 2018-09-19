@@ -69,6 +69,7 @@ class VMWareAddNode(object):
     support_nodes=None
     node_type=None
     node_number=None
+    openshift_disable_check=None
     container_storage=None
     container_storage_disks=None
     container_storage_block_hosting_volume_size=None
@@ -248,8 +249,10 @@ class VMWareAddNode(object):
             'node_type': self.args.node_type,
             'node_number':self.args.node_number,
             'tag': self.args.tag,
-            'ldap_fqdn':'' }
-            }
+            'ldap_fqdn': '',
+            'openshift_disable_check': (
+                'docker_storage,docker_image_availability,disk_availability'),
+        }}
         if six.PY3:
             config = configparser.ConfigParser()
         else:
@@ -344,6 +347,9 @@ class VMWareAddNode(object):
         self.ldap_user = config.get('vmware', 'ldap_user')
         self.ldap_user_password = config.get('vmware', 'ldap_user_password')
         self.ldap_fqdn = config.get('vmware', 'ldap_fqdn')
+        self.openshift_disable_check = config.get(
+            'vmware', 'openshift_disable_check').strip() or (
+                'docker_storage,docker_image_availability,disk_availability')
         self.node_type = config.get('vmware', 'node_type')
         self.node_number = config.get('vmware', 'node_number')
         self.tag = config.get('vmware', 'tag')
@@ -439,6 +445,26 @@ class VMWareAddNode(object):
                 err_count += 1
                 print ("'%s' option is expected to contain "
                        "only image name." % opt_name)
+        allowed_disable_checks = (
+            'disk_availability',
+            'docker_image_availability',
+            'docker_storage',
+            'memory_availability',
+            'package_availability',
+            'package_version',
+        )
+        self.openshift_disable_check_data = [
+            el.strip()
+            for el in self.openshift_disable_check.strip().split(',')
+            if el.strip()
+        ]
+        if not all([(s in allowed_disable_checks)
+                    for s in self.openshift_disable_check_data]):
+            err_count += 1
+            print ("'openshift_disable_check' is allowed to have only "
+                   "following values separated with comma: %s.\n "
+                   "Got following value: %s" % (','.join(
+                       allowed_disable_checks), self.openshift_disable_check))
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  vmware_ini_path
@@ -597,6 +623,9 @@ class VMWareAddNode(object):
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
         }
+        if self.openshift_disable_check_data:
+            playbook_vars_dict["openshift_disable_check"] = (
+                ','.join(self.openshift_disable_check_data))
         if self.container_storage_block_hosting_volume_size:
             playbook_vars_dict['openshift_storage_glusterfs_block_host_vol_size'] = (
                 self.container_storage_block_hosting_volume_size)

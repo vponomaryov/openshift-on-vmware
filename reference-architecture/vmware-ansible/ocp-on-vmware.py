@@ -61,6 +61,7 @@ class VMwareOnOCP(object):
     containerized=None
     container_storage=None
     openshift_hosted_metrics_deploy=None
+    openshift_disable_check=None
     wildcard_zone=None
     inventory_file='infrastructure.json'
     vmware_ini_path=None
@@ -185,8 +186,10 @@ class VMwareOnOCP(object):
             'ldap_user':'openshift',
             'ldap_user_password':'',
             'tag': self.tag,
-            'ldap_fqdn':'' }
-            }
+            'ldap_fqdn': '',
+            'openshift_disable_check': (
+                'docker_storage,docker_image_availability,disk_availability'),
+        }}
         if six.PY3:
             config = configparser.ConfigParser()
         else:
@@ -267,6 +270,9 @@ class VMwareOnOCP(object):
         self.ldap_user = config.get('vmware', 'ldap_user')
         self.ldap_user_password = config.get('vmware', 'ldap_user_password')
         self.ldap_fqdn = config.get('vmware', 'ldap_fqdn')
+        self.openshift_disable_check = config.get(
+            'vmware', 'openshift_disable_check').strip() or (
+                'docker_storage,docker_image_availability,disk_availability')
         err_count=0
 
         required_vars = {
@@ -314,6 +320,26 @@ class VMwareOnOCP(object):
             print ("OCP RPM versions and docker image tag do not match. "
                    "Need either to change 'ose_puddle_repo' or "
                    "'docker_image_tag' config options.")
+        allowed_disable_checks = (
+            'disk_availability',
+            'docker_image_availability',
+            'docker_storage',
+            'memory_availability',
+            'package_availability',
+            'package_version',
+        )
+        self.openshift_disable_check_data = [
+            el.strip()
+            for el in self.openshift_disable_check.strip().split(',')
+            if el.strip()
+        ]
+        if not all([(s in allowed_disable_checks)
+                    for s in self.openshift_disable_check_data]):
+            err_count += 1
+            print ("'openshift_disable_check' is allowed to have only "
+                   "following values separated with comma: %s.\n "
+                   "Got following value: %s" % (','.join(
+                       allowed_disable_checks), self.openshift_disable_check))
 
         if err_count > 0:
             print "Please fill out the missing variables in %s " %  self.vmware_ini_path
@@ -649,6 +675,9 @@ class VMwareOnOCP(object):
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
         }
+        if self.openshift_disable_check_data:
+            playbook_vars_dict["openshift_disable_check"] = (
+                ','.join(self.openshift_disable_check_data))
         if self.docker_registry_url:
             playbook_vars_dict['oreg_url'] = self.docker_registry_url
             # NOTE(vponomar): following is workaround for the logic
