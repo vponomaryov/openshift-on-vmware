@@ -45,3 +45,5 @@
     url: http://{{ ansible_default_ipv4.address }}:8080/hello
     status_code: 200
     method: GET
+  retries: 15
+  delay: 2

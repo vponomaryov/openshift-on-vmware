@@ -52,6 +52,12 @@
     "_db_comment": "Database file name",
     "db": "/var/lib/heketi/heketi.db",
 
+    "_auto_create_block_hosting_volume": "Creates Block Hosting volumes automatically if not found or exsisting volume exhausted",
+    "auto_create_block_hosting_volume": true,
+
+    "_block_hosting_volume_size": "New block hosting volume will be created in size mentioned, This is considered only if auto-create is enabled.",
+    "block_hosting_volume_size": {{ openshift_storage_glusterfs_block_host_vol_size }},
+
     "_loglevel_comment": [
       "Set log level. Choices are:",
       "  none, critical, error, warning, info, debug",
