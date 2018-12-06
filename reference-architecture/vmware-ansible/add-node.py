@@ -202,7 +202,7 @@ class VMWareAddNode(object):
             'console_port':'8443',
             'container_storage':'none',
             'container_storage_disks':'100,600',
-            'container_storage_block_hosting_volume_size': '',
+            'container_storage_block_hosting_volume_size': '99',
             'additional_disks_to_storage_nodes': '100',
             'container_storage_disk_type':'eagerZeroedThick',
             'container_storage_glusterfs_timeout': '',
@@ -273,7 +273,8 @@ class VMWareAddNode(object):
         self.container_storage = config.get('vmware', 'container_storage')
         self.container_storage_disks = config.get('vmware', 'container_storage_disks')
         self.container_storage_block_hosting_volume_size = config.get(
-            'vmware', 'container_storage_block_hosting_volume_size')
+            'vmware',
+            'container_storage_block_hosting_volume_size').strip() or 99
         self.container_storage_disk_type = config.get(
             'vmware', 'container_storage_disk_type')
         self.additional_disks_to_storage_nodes = config.get(
