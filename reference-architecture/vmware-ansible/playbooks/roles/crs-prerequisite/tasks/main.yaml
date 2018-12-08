@@ -31,6 +31,16 @@
   register: result
   until: result is succeeded
 
+- name: Install gluster-block package
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+  - 'gluster-block'
+  retries: 5
+  delay: 5
+  ignore_errors: yes
+
 - name: Stop firewalld
   service:
     name: firewalld
@@ -45,3 +55,12 @@
   with_items:
   - iptables
   - glusterd
+
+- name: Start gluster-blockd service
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  with_items:
+  - gluster-blockd
+  ignore_errors: yes
