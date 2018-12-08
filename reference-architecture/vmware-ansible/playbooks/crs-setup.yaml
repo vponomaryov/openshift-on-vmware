@@ -8,12 +8,52 @@
 
 - hosts: single_master
   tasks:
-  - name: Enable Gluster 3 repo
-    import_role:
-      name: enable-gluster-repo
-  - name: Install and run heketi
-    import_role:
-      name: heketi-install
+  - name: Label common compute nodes be suitable for Heketi POD
+    oc_label:
+      name: '{{ item }}'
+      kind: 'node'
+      state: 'add'
+      labels:
+      - key: 'glusterfs'
+        value: 'heketi-host'
+      - key: 'heketi'
+        value: 'heketi-host'
+    with_items: "{{ groups[cluster_id + '-app'] }}"
+    ignore_errors: true
+
+# Prepare SSH key pair before CRS installation
+- hosts: localhost
+  ignore_errors: no
+  tasks:
+  - name: Define path for the SSH key
+    set_fact:
+      crs_ssh_keypath: "/root/.ssh/crs_nodes_{{
+          cluster_id + '_' + (999999999999999 | random | string ) }}"
+  - name: Generate SSH key pair for Heketi and CRS interactions
+    shell: "yes y| ssh-keygen -b 2048 -t rsa -f {{ crs_ssh_keypath }} -q -N ''"
+    args:
+      creates: "{{ crs_ssh_keypath }}"
+  - name: Read contents of the public SSH key
+    command: "cat {{ crs_ssh_keypath }}.pub"
+    register: crs_pub_key_raw
+  - name: Save public SSH key data to the variable
+    set_fact:
+      crs_pub_key: "{{ crs_pub_key_raw.stdout_lines[0].strip() }}"
+  - name: Copy public SSH key onto CRS nodes
+    shell: "echo {{ crs_pub_key }} >> /root/.ssh/authorized_keys"
+    delegate_to: "{{ item }}"
+    delegate_facts: true
+    with_items: "{{ groups[cluster_id + '-crs'] }}"
+  - name: Set var with SSH key path for master nodes
+    set_fact:
+      crs_ssh_keypath: "{{ crs_ssh_keypath }}"
+    delegate_to: "{{ item }}"
+    delegate_facts: true
+    with_items: "{{ groups[cluster_id + '-master'] }}"
+
+# Run CRS installation
+- hosts: single_master
+  tasks:
   - name: Perform actions on master node which are required to install CRS 
     import_role:
       name: openshift_storage_glusterfs
@@ -21,8 +61,7 @@
       openshift_storage_glusterfs_name: 'crs'
       openshift_storage_glusterfs_namespace: 'crs'
       openshift_storage_glusterfs_is_native: false
-      openshift_storage_glusterfs_heketi_is_native: false
-      openshift_storage_glusterfs_heketi_url: "{{ ansible_default_ipv4.address }}"
+      openshift_storage_glusterfs_heketi_is_native: true
       openshift_storage_glusterfs_heketi_admin_key: "{{
           (dp_tool_heketi_admin_key.strip() != '') |
               ternary(dp_tool_heketi_admin_key.strip(), omit) }}"
@@ -32,7 +71,9 @@
       openshift_storage_glusterfs_storageclass: true
       openshift_storage_glusterfs_block_storageclass: true
       openshift_storage_glusterfs_s3_deploy: false
-      openshift_storage_glusterfs_heketi_executor: ssh
+      openshift_storage_glusterfs_nodeselector: 'role=app'
+      openshift_storage_glusterfs_heketi_executor: 'ssh'
+      openshift_storage_glusterfs_heketi_ssh_keyfile: "{{ crs_ssh_keypath }}"
   - name: Allow to expand PVCs using 'glusterfs' storageclass.
     oc_edit:
       kind: sc
@@ -40,9 +81,23 @@
       content:
         allowVolumeExpansion: true
 
+- name: Get IP address of the node with router
+  hosts: single_master
+  tasks:
+  - command: "oc get endpoints router -o=custom-columns=:.subsets[*].addresses[0].ip -n default"
+    register: router_get
+  - set_fact:
+      router_ip: "{{ router_get.stdout_lines[1].strip() }}"
+    delegate_to: "{{ item }}"
+    delegate_facts: True
+    with_items: "{{ groups['allnodes'] }}"
+
 - name: Restart dnsmasq on all the nodes to apply all the changes we made
   hosts: allnodes
   tasks:
+  - lineinfile:
+      path: /etc/dnsmasq.conf
+      line: "address=/.{{ app_dns_prefix }}.{{ dns_zone }}/{{ router_ip }}"
   - service:
       name: dnsmasq
       state: restarted
@@ -57,6 +112,10 @@
     register: master_ipv4
   - set_fact:
       master_ipv4: "{{ master_ipv4.stdout_lines[0] }}"
+  - command: "oc patch svc heketi-crs
+                  --namespace crs
+                  -p '{\"spec\":{\"externalIPs\":[\"{{ master_ipv4 }}\"]}}'"
+    run_once: true
 
 # Following updates config file
 # which is required for automated tests from 'cns-automation' repo
