@@ -146,8 +146,6 @@
             ip4addrs[item.value.guestname]: {
                 'manage': item.value.guestname,
                 'storage': ip4addrs[item.value.guestname],
-                'zone': (ip4addrs[item.value.guestname].split('.')[-2::] | join('') | int),
-                'devices': glusterfs_devices,
                 'additional_devices': glusterfs_additional_devices,
             }
         })
@@ -164,8 +162,4 @@
     edits:
     - key: gluster_servers
       value: "{{ gluster_servers }}"
-    - key: cns.trusted_storage_pool_list
-      # NOTE(vponomar): according to the 'cns-automation',
-      #                 following is expected to be list of lists
-      value: "[{{ gluster_servers.keys() }}]"
   when: gluster_servers is defined

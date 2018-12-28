@@ -175,9 +175,9 @@
         master: "{{ ocp_master_and_client_nodes }}"
         client: "{{ ocp_master_and_client_nodes }}"
         nodes: "{{ ocp_compute_nodes }}"
-    - key: cns.heketi_config.heketi_client_node
+    - key: openshift.heketi_config.heketi_client_node
       value: "{{ ocp_master_and_client_nodes.keys()[0] }}"
-    - key: cns.heketi_config.heketi_server_url
+    - key: openshift.heketi_config.heketi_server_url
       value: "http://{{ ocp_master_and_client_nodes.keys()[0] }}:8080"
   when:
   - ocp_master_and_client_nodes is defined

@@ -13,38 +13,18 @@ gluster_servers:
     gluster_server_ip_address1:
         manage: "gluster_server_ip_hostname1"
         storage: gluster_server_ip_address1
-        zone: 1
-        devices: ['/dev/sdd', '/dev/sde', '/dev/sdf']
         additional_devices: ['/dev/sdg']
     gluster_server_ip_address2:
         manage: "gluster_server_ip_hostname2"
         storage: gluster_server_ip_address2
-        zone: 2
-        devices: ['/dev/sdd', '/dev/sde', '/dev/sdf']
         additional_devices: ['/dev/sdg']
     gluster_server_ip_address3:
         manage: "gluster_server_ip_hostname3"
         storage: gluster_server_ip_address3
-        zone: 3
-        devices: ['/dev/sdd', '/dev/sde', '/dev/sdf']
         additional_devices: ['/dev/sdg']
 
-cns:
-    setup:
-        routing_config: "routing_config_value"
-        insecure_registry: "INSECURE_REGISTRY='--insecure-registry registry.access.redhat.com'"
-        add_registry: "ADD_REGISTRY='--add-registry registry.access.redhat.com'"
-        cns_project_name: "cns"
-        cns_username: "system:admin"
-        cns_password: ""
-
-    # 'deployment_type' can be crs_heketi_outside_openshift|crs_heketi_inside_openshift|cns
-    deployment_type: "cns"
-    executor: ssh
-    executor_user: root
-    executor_port: 22
-    trusted_storage_pool_list:
-        - [gluster_server_ip_address1, gluster_server_ip_address2, gluster_server_ip_address3]
+openshift:
+    storage_project_name: "storage"
     heketi_config:
         heketi_dc_name: name_of_the_heketi_deployment_config
         heketi_service_name: name_of_the_heketi_service
@@ -52,26 +32,33 @@ cns:
         heketi_server_url: "http://heketi.url"
         heketi_cli_user: "admin"
         heketi_cli_key: "secret_value_for_admin_user"
-        heketi_ssh_key: "/etc/heketi/heketi_key"
-        heketi_config_file: "/etc/heketi/topology.json"
-    heketi_volume:
-        size: 1
-        name: "volume_for_testing_size_extending"
-        expand_size: 2
     dynamic_provisioning:
         storage_classes:
             file_storage_class:
                 provisioner: "kubernetes.io/glusterfs"
                 resturl: "http://heketi.url"
                 restuser: "admin"
-                secretnamespace: "cns"
-                volumenameprefix: "cns-vol"
+                secretnamespace: "storage"
+                volumenameprefix: "autotests-file"
             block_storage_class:
                 provisioner: "gluster.org/glusterblock"
                 resturl: "http://heketi.url"
                 restuser: "admin"
-                restsecretnamespace: "cns"
-                volumenameprefix: "cns-vol"
-                auth: True
+                restsecretnamespace: "storage"
                 hacount: "3"
                 chapauthenabled: "true"
+                volumenameprefix: "autotests-block"
+    scale:
+        - type: jenkins
+          instances: 1
+          namespace: "storage"
+          pod_parameters:
+            ENABLE_OAUTH: false
+            MEMORY_LIMIT: "256Mi"
+            VOLUME_CAPACITY: "1Gi"
+            STORAGE_CLASS_NAME: "glusterfs-storage"
+            JENKINS_IMAGE_STREAM_TAG: "jenkins:2"
+          load_parameters:
+            JOBS: 30
+            ITERATIONS: 30
+            EXECUTORS: 5
