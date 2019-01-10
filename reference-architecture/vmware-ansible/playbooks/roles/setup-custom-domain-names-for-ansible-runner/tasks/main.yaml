@@ -16,13 +16,6 @@
       }]) }}"
   with_items: "{{ groups.all | select('match', ocp_hostname_prefix) | list }}"
 
-- name: Delete old left-overs if exist in /etc/hosts
-  lineinfile:
-    dest: '/etc/hosts'
-    regexp: '{{ item.name_short }}'
-    state: absent
-  with_items: "{{ current_cluster_hosts }}"
-
 - name: Gather current cluster IP addresses
   set_fact:
     current_cluster_ips: "{{
@@ -32,8 +25,59 @@
   with_subelements: ["{{ current_cluster_hosts }}", net]
   when: "item.1.network == vm_network"
 
-- name: Add domain name mapping of newly created cluster nodes to /etc/hosts
-  lineinfile:
-    dest: '/etc/hosts'
-    line: '{{ item.key }} {{ item.value.0 }} {{ item.value.1 }}'
-  with_dict: "{{ current_cluster_ips }}"
+- name: Get current user home dir
+  shell: 'eval echo "~$USER"'
+  register: home_dir
+- name: Set hosts files paths
+  set_fact:
+    home_hosts_file: "{{ home_dir.stdout_lines[0] + '/.ssh/config' }}"
+    system_hosts_file: "/etc/hosts"
+- name: Check 'write' permissions for system hosts file
+  stat:
+    path: "{{ system_hosts_file }}"
+  register: stat_system_hosts
+
+- name: Update system hosts file if writeable
+  block:
+  - name: Delete old left-overs if exist
+    lineinfile:
+      dest: "{{ system_hosts_file }}"
+      regexp: '{{ item.name_short }}'
+      state: absent
+      create: true
+    with_items: "{{ current_cluster_hosts }}"
+  - name: Add domain name mapping of new cluster nodes to the system hosts file
+    lineinfile:
+      dest: "{{ system_hosts_file }}"
+      line: '{{ item.key }} {{ item.value.0 }} {{ item.value.1 }}'
+      create: true
+    with_dict: "{{ current_cluster_ips }}"
+  when: "stat_system_hosts.stat.writeable"
+
+- name: Update user's SSH hosts file
+  block:
+  - name: Delete old left-overs if exist
+    lineinfile:
+      path: "{{ home_hosts_file }}"
+      state: absent
+      regexp: "{{ item.key }}"
+      create: true
+      mode: '644'
+    with_dict: "{{ current_cluster_ips }}"
+  - name: Write line with option group
+    lineinfile:
+      dest: "{{ home_hosts_file }}"
+      state: present
+      line: "Host {{ item.value.0 }} {{ item.value.1 }}"
+      create: true
+      mode: '644'
+    with_dict: "{{ current_cluster_ips }}"
+  - name: Write line with hostname option
+    lineinfile:
+      dest: "{{ home_hosts_file }}"
+      state: present
+      line: "     HostName {{ item.key }}"
+      insertafter: "Host {{ item.value.0 }} {{ item.value.1 }}"
+      create: true
+      mode: '644'
+    with_dict: "{{ current_cluster_ips }}"
