@@ -127,7 +127,7 @@
 
   # Heketi POD
   - name: Get heketi POD
-    shell: "oc get pods --all-namespaces --selector=deploymentconfig=heketi-cns
+    shell: "oc get pods --all-namespaces -l heketi
                 -o=custom-columns=:.metadata.name,:.metadata.namespace"
     register: heketi_pods
   - name: DEBUG HEKETI
@@ -158,7 +158,7 @@
 
   # Gluster PODs
   - name: Get list of Gluster PODs
-    shell: "oc get pods --all-namespaces --selector=glusterfs-node=pod
+    shell: "oc get pods --all-namespaces -l glusterfs-node
                 -o=custom-columns=:.metadata.name,:.metadata.namespace"
     register: gluster_pods
   - name: DEBUG GLUSTER
