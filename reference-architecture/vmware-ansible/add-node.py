@@ -92,6 +92,7 @@ class VMWareAddNode(object):
     cns_glusterfs_block_version = None
     cns_glusterfs_heketi_image = None
     cns_glusterfs_heketi_version = None
+    disable_yum_update_and_reboot=None
 
     def __init__(self, load=True):
 
@@ -252,6 +253,7 @@ class VMWareAddNode(object):
             'ldap_fqdn': '',
             'openshift_disable_check': (
                 'docker_storage,docker_image_availability,disk_availability'),
+            'disable_yum_update_and_reboot': 'no',
         }}
         if six.PY3:
             config = configparser.ConfigParser()
@@ -351,6 +353,8 @@ class VMWareAddNode(object):
         self.openshift_disable_check = config.get(
             'vmware', 'openshift_disable_check').strip() or (
                 'docker_storage,docker_image_availability,disk_availability')
+        self.disable_yum_update_and_reboot = config.get(
+            'vmware', 'disable_yum_update_and_reboot').strip() or 'no'
         self.node_type = config.get('vmware', 'node_type')
         self.node_number = config.get('vmware', 'node_number')
         self.tag = config.get('vmware', 'tag')
@@ -623,6 +627,7 @@ class VMWareAddNode(object):
             'ocp_hostname_prefix': self.ocp_hostname_prefix,
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
+            'disable_yum_update_and_reboot': self.disable_yum_update_and_reboot
         }
         if self.openshift_disable_check_data:
             playbook_vars_dict["openshift_disable_check"] = (

@@ -75,6 +75,7 @@ class VMwareOnOCP(object):
     ose_puddle_repo=None
     gluster_puddle_repo=None
     web_console_install=None
+    disable_yum_update_and_reboot=None
 
     def __init__(self, load=True):
         if load:
@@ -189,6 +190,7 @@ class VMwareOnOCP(object):
             'ldap_fqdn': '',
             'openshift_disable_check': (
                 'docker_storage,docker_image_availability,disk_availability'),
+            'disable_yum_update_and_reboot': 'no',
         }}
         if six.PY3:
             config = configparser.ConfigParser()
@@ -273,6 +275,8 @@ class VMwareOnOCP(object):
         self.openshift_disable_check = config.get(
             'vmware', 'openshift_disable_check').strip() or (
                 'docker_storage,docker_image_availability,disk_availability')
+        self.disable_yum_update_and_reboot = config.get(
+            'vmware', 'disable_yum_update_and_reboot').strip() or 'no'
         err_count=0
 
         required_vars = {
@@ -674,6 +678,7 @@ class VMwareOnOCP(object):
             'ocp_hostname_prefix': self.ocp_hostname_prefix,
             'nfs_host': self.nfs_host,
             'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
+            'disable_yum_update_and_reboot': self.disable_yum_update_and_reboot
         }
         if self.openshift_disable_check_data:
             playbook_vars_dict["openshift_disable_check"] = (
