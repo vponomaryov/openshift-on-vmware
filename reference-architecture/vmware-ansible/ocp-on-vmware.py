@@ -60,7 +60,6 @@ class VMwareOnOCP(object):
     openshift_sdn=None
     containerized=None
     container_storage=None
-    openshift_hosted_metrics_deploy=None
     openshift_disable_check=None
     wildcard_zone=None
     inventory_file='infrastructure.json'
@@ -671,8 +670,6 @@ class VMwareOnOCP(object):
             'openshift_use_openshift_sdn': True,
             'containerized': self.containerized,
             'container_storage': self.container_storage,
-            'openshift_hosted_metrics_deploy': (
-                self.openshift_hosted_metrics_deploy),
             'lb_host': self.lb_host,
             'lb_ha_ip': self.lb_ha_ip,
             'ocp_hostname_prefix': self.ocp_hostname_prefix,
@@ -696,8 +693,6 @@ class VMwareOnOCP(object):
                 cockpit_image_prefix = 'openshift3/'
                 web_console_prefix = 'openshift3/ose-'
             reg_url = self.docker_registry_url.split(cockpit_image_prefix)[0]
-            playbook_vars_dict['openshift_cockpit_deployer_prefix'] = (
-                '%s%s' % (reg_url, cockpit_image_prefix))
             playbook_vars_dict['openshift_web_console_prefix'] = (
                 '%s%s' % (reg_url, web_console_prefix))
         if self.docker_additional_registries:

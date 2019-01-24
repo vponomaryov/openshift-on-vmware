@@ -82,13 +82,6 @@
       - "vsphere"
       cloud-config:
       - "/etc/origin/cloudprovider/vsphere.conf"
-    openshift_node_kubelet_args:
-      cloud-provider:
-      - "vsphere"
-      cloud-config:
-      - "/etc/origin/cloudprovider/vsphere.conf"
-      node-labels:
-      - "role={{ openshift_node_labels.role }}"
     openshift_master_admission_plugin_config:
       PersistentVolumeClaimResize:
         configuration:
