@@ -48,17 +48,3 @@ openshift:
                 hacount: "3"
                 chapauthenabled: "true"
                 volumenameprefix: "autotests-block"
-    scale:
-        - type: jenkins
-          instances: 1
-          namespace: "storage"
-          pod_parameters:
-            ENABLE_OAUTH: false
-            MEMORY_LIMIT: "256Mi"
-            VOLUME_CAPACITY: "1Gi"
-            STORAGE_CLASS_NAME: "glusterfs-storage"
-            JENKINS_IMAGE_STREAM_TAG: "jenkins:2"
-          load_parameters:
-            JOBS: 30
-            ITERATIONS: 30
-            EXECUTORS: 5
