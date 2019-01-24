@@ -2,9 +2,12 @@
 #
 # List of expected input args:
 # - $1 is an env dir, i.e '/home/username/.../.tox/ocp3.6'
-# - $2 is a tag to checkout from,
-#   i.e. 'openshift-ansible-3.6.173.0.96-1' for OCP v3.6
+# - $2 is a tag or PR to checkout from,
+#   1) TAG -> i.e. 'openshift-ansible-3.6.173.0.96-1' for OCP v3.6
 #   See list of tags here: https://github.com/openshift/openshift-ansible/tags
+#   2) PR -> 'pull/12345/head'. Where '12345' is ID of a PR.
+#   See list of PRs here: https://github.com/openshift/openshift-ansible/pulls
+#   Note that PR is checked out, not cherry-picked.
 
 OPENSHIFT_ANSIBLE_GIT_URL='git://github.com/openshift/openshift-ansible.git'
 TARGET_DIR=$1/usr/share/ansible/openshift-ansible
