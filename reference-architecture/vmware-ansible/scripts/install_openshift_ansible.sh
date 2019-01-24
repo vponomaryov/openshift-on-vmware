@@ -24,9 +24,9 @@ TAG=${TAG/refs\/tags\//}
 
 if [[ ! -d $TARGET_DIR ]]; then
     mkdir -p $TARGET_DIR
-    git clone $OPENSHIFT_ANSIBLE_GIT_URL --single-branch --branch $TAG $TARGET_DIR
-else
-    cd $TARGET_DIR
-    git fetch -t --all
-    git reset --hard $TAG
+    git clone --single-branch $OPENSHIFT_ANSIBLE_GIT_URL $TARGET_DIR
 fi
+
+cd $TARGET_DIR
+git fetch origin $TAG
+git reset --hard FETCH_HEAD
