@@ -49,12 +49,6 @@
         - 'node-role.kubernetes.io/storage=true'
         - 'role=storage'
         edits: []
-      - name: node-config-haproxy
-        labels: []
-        edits: []
-      - name: node-config-nfs
-        labels: []
-        edits: []
 
 - include: add-node-prerequisite.yaml
   when: openshift_vers in ['v3_6', 'v3_7']
@@ -74,7 +68,7 @@
   when: openshift_vers not in ['v3_6', 'v3_7']
 
 - name: Map domain names and IP addresses of old and new nodes to each other
-  hosts: loadbalancer, master, infra, app, crs
+  hosts: master, infra, app, crs
   vars_files:
     - vars/main.yaml
   roles:

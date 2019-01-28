@@ -57,9 +57,3 @@
       - 'node-role.kubernetes.io/storage=true'
       - 'role=storage'
       edits: []
-    - name: node-config-haproxy
-      labels: []
-      edits: []
-    - name: node-config-nfs
-      labels: []
-      edits: []

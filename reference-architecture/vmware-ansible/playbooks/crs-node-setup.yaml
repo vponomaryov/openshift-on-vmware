@@ -47,12 +47,6 @@
         - 'node-role.kubernetes.io/storage=true'
         - 'role=storage'
         edits: []
-      - name: node-config-haproxy
-        labels: []
-        edits: []
-      - name: node-config-nfs
-        labels: []
-        edits: []
 
 - hosts: crs
   gather_facts: no
@@ -66,7 +60,7 @@
       tasks_from: kernel_modules.yml
 
 - name: Map domain names and IP addresses of old and new nodes to each other
-  hosts: loadbalancer, master, infra, app, cns
+  hosts: master, infra, app, cns
   vars_files:
     - vars/main.yaml
   roles:
