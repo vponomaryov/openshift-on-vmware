@@ -18,7 +18,7 @@
         value: 'heketi-host'
       - key: 'heketi'
         value: 'heketi-host'
-    with_items: "{{ groups[cluster_id + '-app'] }}"
+    with_items: "{{ groups[cluster_id + '-compute'] }}"
     ignore_errors: true
 
 # Prepare SSH key pair before CRS installation
@@ -71,7 +71,7 @@
       openshift_storage_glusterfs_storageclass: true
       openshift_storage_glusterfs_block_storageclass: true
       openshift_storage_glusterfs_s3_deploy: false
-      openshift_storage_glusterfs_nodeselector: 'role=app'
+      openshift_storage_glusterfs_nodeselector: 'role=compute'
       openshift_storage_glusterfs_heketi_executor: 'ssh'
       openshift_storage_glusterfs_heketi_ssh_keyfile: "{{ crs_ssh_keypath }}"
   - name: Allow to expand PVCs using 'glusterfs' storageclass.

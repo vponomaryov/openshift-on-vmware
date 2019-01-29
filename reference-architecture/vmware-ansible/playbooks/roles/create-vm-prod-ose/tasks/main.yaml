@@ -3,24 +3,6 @@
   set_fact:
     is_add_nodes: "{{ is_add_nodes | default(false) }}"
 
-- name: Define DHCP network parameters per node
-  set_fact:
-    network_parameters: "{{ network_parameters | default({}) |
-                            combine({item.value.guestname: {
-                                'name': vm_network,
-                                'type': vm_ipaddr_allocation_type,
-                                'gateway': vm_gw}}, recursive=True) }}"
-  with_dict: "{{ host_inventory }}"
-
-- name: Define static network parameters per node
-  set_fact:
-    network_parameters: "{{ network_parameters |
-                            combine({item.value.guestname: {
-                                'ip': item.value.ip4addr,
-                                'netmask': vm_netmask}}, recursive=True) }}"
-  with_dict: "{{ host_inventory }}"
-  when: "'static' == vm_ipaddr_allocation_type"
-
 - name: Define memory and disk parameters per node type
   set_fact:
     host_data:
@@ -31,14 +13,8 @@
         - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
         - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
         - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
-      app:
+      compute:
         memory: "{{ ('cns' in container_storage) | ternary(32768, 8192) }}"
-        disk:
-        - {'size_gb': 60, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
-        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
-        - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
-      infra:
-        memory: 8192
         disk:
         - {'size_gb': 60, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
         - {'size_gb': 40, 'type': 'thin', 'datastore': "{{ vcenter_datastore }}"}
@@ -62,16 +38,14 @@
     disk: "{{ host_data[item.value.guesttype].disk }}"
     hardware:
       memory_mb: "{{ host_data[item.value.guesttype].memory }}"
-    networks: "[ {{ network_parameters[item.value.guestname] }} ]"
+    networks: "[{'name': '{{ vm_network }}', 'type': 'dhcp' }]"
     customization:
       domain: "{{dns_zone}}"
-      dns_servers:
-      - "{{ vm_dns }}"
       dns_suffix: "{{ dns_zone }}"
       hostname: "{{ item.value.guestname }}"
   with_dict: "{{ host_inventory }}"
-  when: "item.value.guesttype in ['app', 'master', 'infra']"
-  async: "{{ (network_parameters | length) * 600 }}"
+  when: "item.value.guesttype in ['compute', 'master']"
+  async: "{{ 6 * 600 }}"
   poll: 0
   register: async_vms_creation
 
@@ -83,7 +57,7 @@
     loop_var: "async_result_item"
   register: async_poll_results
   until: async_poll_results.finished
-  retries: "{{ (network_parameters | length) * 100 }}"
+  retries: "{{ 6 * 100 }}"
 
 - name: Read info of newly created VMs
   vmware_guest_tools_wait:
@@ -115,12 +89,12 @@
     groups: "{{ item.value.tag }}, production_group{{ is_add_nodes | ternary(', new_nodes', '')}}"
     openshift_node_group_name: "{{ 
         (item.value.guesttype == 'master') | ternary('node-config-master',
-                                                     'node-config-compute-and-infra') }}"
+                                                     'node-config-compute') }}"
   with_dict: "{{ host_inventory }}"
-  when: "item.value.guesttype in ['app', 'master', 'infra']"
+  when: "item.value.guesttype in ['compute', 'master']"
 
 # Following updates config file
-# which is required for automated tests from 'cns-automation' repo
+# which is required for automated tests from 'glusterfs-containers-tests' repo
 
 - name: Gather data about existing master nodes for tests config file
   set_fact:
@@ -143,7 +117,7 @@
   with_items: "{{ groups[cluster_id + '-master'] }}"
   when: cns_automation_config_file_path | length > 0
 
-- name: Gather data about existing app and infra nodes for tests config file
+- name: Gather data about existing compute nodes for tests config file
   set_fact:
     ocp_compute_nodes: "{{
         ocp_compute_nodes | default({}) | combine({
@@ -161,11 +135,10 @@
             }
         })
     }}"
-  with_items: "{{ groups[cluster_id + '-infra'] | default([]) }} +
-               {{ groups[cluster_id + '-app'] | default([]) }}"
+  with_items: "{{ groups[cluster_id + '-compute'] | default([]) }} "
   when: cns_automation_config_file_path | length > 0
 
-- name: Update 'cns-automation' config file
+- name: Update 'glusterfs-containers-tests' config file
   yedit:
     src: "{{ cns_automation_config_file_path }}"
     state: present

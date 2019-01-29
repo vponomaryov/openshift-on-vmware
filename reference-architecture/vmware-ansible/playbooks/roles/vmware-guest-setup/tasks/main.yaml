@@ -34,14 +34,6 @@
       register: result
       until: result is succeeded
 
-    - name: be sure katello-agent is installed
-      yum: name=katello-agent state=installed
-      when: rhsm_activation_key is defined and rhsm_activation_key
-      retries: 5
-      delay: 5
-      register: result
-      until: result is succeeded
-
     - name: be sure openvmtools is running and enabled
       service: name=vmtoolsd state=started enabled=yes
 

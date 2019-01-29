@@ -1,13 +1,20 @@
 #!/usr/bin/env python
 # vim: sw=4 ts=4 et
 
-import argparse, click, fileinput, iptools, os, re, six, sys, yaml, textwrap
-from argparse import RawTextHelpFormatter
+import argparse
+import click
 from collections import defaultdict
+import fileinput
+import os
+import re
 import requests
-from six.moves import configparser
-from time import time
 from shutil import copyfile
+import six
+from six.moves import configparser
+import sys
+import textwrap
+from time import time
+import yaml
 
 try:
     import json
@@ -15,7 +22,6 @@ except ImportError:
     import simplejson as json
 
 class VMWareAddNode(object):
-
     __name__ = 'VMWareAddNode'
 
     openshift_vers=None
@@ -30,43 +36,23 @@ class VMWareAddNode(object):
     vcenter_cluster=None
     vcenter_datacenter=None
     vcenter_resource_pool=None
-    vm_dns=None
-    vm_gw=None
-    vm_netmask=None
     rhel_subscription_server=None
     openshift_sdn=None
-    byo_lb=None
-    lb_host=None
-    byo_nfs=None
-    nfs_host=None
-    nfs_registry_mountpoint=None
-    master_nodes=None
-    infra_nodes=None
-    app_nodes=None
+    compute_nodes=None
     storage_nodes=None
-    vm_ipaddr_start=None
-    vm_ipaddr_allocation_type=None
     cns_automation_config_file_path=None
     ocp_hostname_prefix=None
-    auth_type=None
-    ldap_user=None
-    ldap_user_password=None
-    ldap_fqdn=None
     deployment_type=None
     console_port=8443
     rhel_subscription_user=None
     rhel_subscription_pass=None
     rhel_subscription_pool=None
-    rhsm_katello_url=None
-    rhsm_activation_key=None
-    rhsm_org_id=None
     dns_zone=None
     app_dns_prefix=None
     admin_key=None
     user_key=None
     wildcard_zone=None
     inventory_file='add-node.json'
-    support_nodes=None
     node_type=None
     node_number=None
     openshift_disable_check=None
@@ -94,87 +80,81 @@ class VMWareAddNode(object):
     cns_glusterfs_heketi_version = None
     disable_yum_update_and_reboot=None
 
-    def __init__(self, load=True):
-
-        if load:
-            self.parse_cli_args()
-            self.read_ini_settings()
-        if not os.path.exists(self.inventory_file):
-            self.create_inventory_file()
-        elif os.path.exists(self.inventory_file) or self.args.create_inventory:
-            if self.args.no_confirm:
-                self.create_inventory_file()
-            else:
-                if click.confirm('Overwrite the existing inventory file?'):
-                    self.create_inventory_file()
-        if os.path.exists(self.inventory_file):
-            self.launch_refarch_env()
+    def __init__(self):
+        self.parse_cli_args()
+        self.read_ini_settings()
+        self.create_inventory_file()
+        self.launch_refarch_env()
 
     def update_ini_file(self):
-        ''' Update INI file with added number of nodes '''
+        """Update INI file with added number of nodes."""
         scriptbasename = "ocp-on-vmware"
         defaults = {'vmware': {
-            'ini_path': os.path.join(os.path.dirname(__file__), '%s.ini' % scriptbasename),
-            'master_nodes':'3',
-            'infra_nodes':'2',
-            'storage_nodes': '0',
-            'app_nodes':'3' }
-        }
+            'ini_path': os.path.join(
+                os.path.dirname(__file__), '%s.ini' % scriptbasename),
+            'storage_nodes': '3',
+            'compute_nodes':'2',
+        }}
         # where is the config?
         if six.PY3:
             config = configparser.ConfigParser()
         else:
             config = configparser.SafeConfigParser()
 
-        vmware_ini_path = os.environ.get('VMWARE_INI_PATH', defaults['vmware']['ini_path'])
-        vmware_ini_path = os.path.expanduser(os.path.expandvars(vmware_ini_path))
+        vmware_ini_path = os.environ.get(
+            'VMWARE_INI_PATH', defaults['vmware']['ini_path'])
+        vmware_ini_path = os.path.expanduser(
+            os.path.expandvars(vmware_ini_path))
         config.read(vmware_ini_path)
 
-
-        if 'app' in self.node_type:
-            self.app_nodes = int(self.app_nodes) + int(self.node_number)
-            config.set('vmware', 'app_nodes', str(self.app_nodes))
-            print "Updating %s file with %s app_nodes" % (vmware_ini_path, str(self.app_nodes))
-        if 'infra' in self.node_type:
-            self.infra_nodes = int(self.infra_nodes) + int(self.node_number)
-            config.set('vmware', 'infra_nodes', str(self.infra_nodes))
-            print "Updating %s file with %s infra_nodes" % (vmware_ini_path, str(self.infra_nodes))
+        if 'compute' in self.node_type:
+            self.compute_nodes = (
+                int(self.compute_nodes) + int(self.node_number))
+            config.set('vmware', 'compute_nodes', self.compute_nodes)
+            print "Updating %s file with %s compute_nodes" % (
+                vmware_ini_path, self.compute_nodes)
         if 'storage' in self.node_type:
-            if 'clean' in self.tag:
-                self.storage_nodes = int(self.storage_nodes) - int(self.node_number)
-            else:
-                self.storage_nodes = int(self.storage_nodes) + int(self.node_number)
-            config.set('vmware', 'storage_nodes', str(self.storage_nodes))
-            print "Updating %s file with %s storage_nodes" % (vmware_ini_path, str(self.storage_nodes))
+            self.storage_nodes = int(self.storage_nodes) or 3
+            config.set('vmware', 'storage_nodes', self.storage_nodes)
+            print "Updating %s file with %s storage_nodes" % (
+                vmware_ini_path, self.storage_nodes)
 
         for line in fileinput.input(vmware_ini_path, inplace=True):
-            if line.startswith("app_nodes"):
-                print "app_nodes=" + str(self.app_nodes)
-            elif line.startswith("infra_nodes"):
-                print "infra_nodes=" + str(self.infra_nodes)
+            if line.startswith("compute_nodes"):
+                print "compute_nodes=" + self.compute_nodes
             elif line.startswith("storage_nodes"):
-                print "storage_nodes=" + str(self.storage_nodes)
+                print "storage_nodes=" + self.storage_nodes
             else:
                 print line,
 
     def parse_cli_args(self):
+        """Command line argument processing."""
 
-        ''' Command line argument processing '''
-        tag_help = '''Skip to various parts of install valid tags include:
+        tag_help = """Skip to various parts of install valid tags include:
         - vms (create vms for adding nodes to cluster or CNS/CRS)
         - node-setup (install the proper packages on the CNS/CRS nodes)
-        - heketi-setup (install heketi and config on the crs master/CRS ONLY)
-        - heketi-ocp (install the heketi secret and storage class on OCP/CRS ONLY)
-        - clean (remove vms and unregister them from RHN also remove storage classes or secrets'''
-        parser = argparse.ArgumentParser(description='Add new nodes to an existing OCP deployment', formatter_class=RawTextHelpFormatter)
-        parser.add_argument('--node_type', action='store', default='app', help='Specify the node label: app, infra, storage')
-        parser.add_argument('--node_number', action='store', default='3', help='Specify the number of nodes to add')
-        parser.add_argument('--create_inventory', action='store_true', help='Helper script to create json inventory file and exit')
+        - clean (remove vms and unregister them from RHN
+                 also remove storage classes or secrets"""
+        parser = argparse.ArgumentParser(
+            description='Add new nodes to an existing OCP deployment',
+            formatter_class=argparse.RawTextHelpFormatter)
+        parser.add_argument(
+            '--node_type', action='store', default='compute',
+            help='Specify the node label: compute, storage')
+        parser.add_argument(
+            '--node_number', action='store', default='3',
+            help='Specify the number of nodes to add.')
+        parser.add_argument(
+            '--create_inventory', action='store_true',
+            help=('Deprecated and not used option. '
+                  'Everything that is needed gets autocreated.'))
         parser.add_argument(
             '--no_confirm', action='store_true',
             help='Skip confirmation prompt')
         parser.add_argument('--tag', default=None, help=tag_help)
-        parser.add_argument('--verbose', default=None, action='store_true', help='Verbosely display commands')
+        parser.add_argument(
+            '--verbose', default=None, action='store_true',
+            help='Verbosely display commands')
         self.args = parser.parse_args()
         self.verbose = self.args.verbose
 
@@ -194,15 +174,15 @@ class VMWareAddNode(object):
             "Failed to pull list of packages from '%s' url." % url)
 
     def read_ini_settings(self):
-
-        ''' Read ini file settings '''
+        """Read ini file settings."""
 
         scriptbasename = "ocp-on-vmware"
         defaults = {'vmware': {
-            'ini_path': os.path.join(os.path.dirname(__file__), '%s.ini' % scriptbasename),
-            'console_port':'8443',
-            'container_storage':'none',
-            'container_storage_disks':'100,600',
+            'ini_path': os.path.join(
+                os.path.dirname(__file__), '%s.ini' % scriptbasename),
+            'console_port': '8443',
+            'container_storage': 'none',
+            'container_storage_disks': '100,600',
             'container_storage_block_hosting_volume_size': '99',
             'additional_disks_to_storage_nodes': '100',
             'container_storage_disk_type':'eagerZeroedThick',
@@ -221,36 +201,23 @@ class VMWareAddNode(object):
             'cns_glusterfs_block_version': 'latest',
             'cns_glusterfs_heketi_image': 'rhgs3/rhgs-volmanager-rhel7',
             'cns_glusterfs_heketi_version': 'latest',
-            'deployment_type':'openshift-enterprise',
-            'openshift_vers':'v3_6',
-            'vcenter_username':'administrator@vsphere.local',
-            'vcenter_template_name':'ocp-server-template-2.0.2',
-            'vcenter_folder':'ocp',
-            'vcenter_resource_pool':'/Resources/OCP3',
-            'app_dns_prefix':'apps',
-            'vm_network':'VM Network',
-            'rhel_subscription_pool':'Red Hat OpenShift Container Platform, Premium*',
+            'deployment_type': 'openshift-enterprise',
+            'openshift_vers': 'v3_11',
+            'vcenter_username': 'administrator@vsphere.local',
+            'vcenter_template_name': 'not-defined',
+            'vcenter_folder': 'ocp',
+            'vcenter_resource_pool': '/Resources/OCP3',
+            'app_dns_prefix': 'apps',
+            'vm_network': 'VM Network',
+            'rhel_subscription_pool': 'Employee SKU',
             'openshift_sdn':'redhat/openshift-ovs-subnet',
-            'byo_lb':'no',
-            'lb_host':'haproxy-',
-            'byo_nfs':'no',
-            'nfs_host':'nfs-0',
-            'nfs_registry_mountpoint':'/exports',
-            'master_nodes':'3',
-            'infra_nodes':'2',
-            'app_nodes':'3',
-            'storage_nodes':'0',
-            'vm_ipaddr_start':'',
-            'vm_ipaddr_allocation_type': 'static',
+            'compute_nodes': '2',
+            'storage_nodes': '3',
             'cns_automation_config_file_path': '',
-            'ocp_hostname_prefix':'',
-            'auth_type':'ldap',
-            'ldap_user':'openshift',
-            'ldap_user_password':'',
+            'ocp_hostname_prefix': 'openshift-on-vmware',
             'node_type': self.args.node_type,
-            'node_number':self.args.node_number,
+            'node_number': self.args.node_number,
             'tag': self.args.tag,
-            'ldap_fqdn': '',
             'openshift_disable_check': (
                 'docker_storage,docker_image_availability,disk_availability'),
             'disable_yum_update_and_reboot': 'no',
@@ -261,19 +228,22 @@ class VMWareAddNode(object):
             config = configparser.SafeConfigParser()
 
         # where is the config?
-        vmware_ini_path = os.environ.get('VMWARE_INI_PATH', defaults['vmware']['ini_path'])
-        vmware_ini_path = os.path.expanduser(os.path.expandvars(vmware_ini_path))
+        vmware_ini_path = os.environ.get(
+            'VMWARE_INI_PATH', defaults['vmware']['ini_path'])
+        vmware_ini_path = os.path.expanduser(
+            os.path.expandvars(vmware_ini_path))
         config.read(vmware_ini_path)
 
         # apply defaults
-        for k,v in defaults['vmware'].iteritems():
+        for k,v in defaults['vmware'].items():
             if not config.has_option('vmware', k):
                 config.set('vmware', k, str(v))
 
         self.console_port = config.get('vmware', 'console_port')
         self.cluster_id = config.get('vmware', 'cluster_id')
         self.container_storage = config.get('vmware', 'container_storage')
-        self.container_storage_disks = config.get('vmware', 'container_storage_disks')
+        self.container_storage_disks = config.get(
+            'vmware', 'container_storage_disks')
         self.container_storage_block_hosting_volume_size = config.get(
             'vmware',
             'container_storage_block_hosting_volume_size').strip() or 99
@@ -311,45 +281,34 @@ class VMWareAddNode(object):
         self.vcenter_host = config.get('vmware', 'vcenter_host')
         self.vcenter_username = config.get('vmware', 'vcenter_username')
         self.vcenter_password = config.get('vmware', 'vcenter_password')
-        self.vcenter_template_name = config.get('vmware', 'vcenter_template_name')
+        self.vcenter_template_name = config.get(
+            'vmware', 'vcenter_template_name')
         self.vcenter_folder = config.get('vmware', 'vcenter_folder')
         self.vcenter_datastore = config.get('vmware', 'vcenter_datastore')
         self.vcenter_datacenter = config.get('vmware', 'vcenter_datacenter')
         self.vcenter_cluster = config.get('vmware', 'vcenter_cluster')
         self.vcenter_datacenter = config.get('vmware', 'vcenter_datacenter')
-        self.vcenter_resource_pool = config.get('vmware', 'vcenter_resource_pool')
+        self.vcenter_resource_pool = config.get(
+            'vmware', 'vcenter_resource_pool')
         self.dns_zone= config.get('vmware', 'dns_zone')
         self.app_dns_prefix = config.get('vmware', 'app_dns_prefix')
-        self.vm_dns = config.get('vmware', 'vm_dns')
-        self.vm_gw = config.get('vmware', 'vm_gw')
-        self.vm_netmask = config.get('vmware', 'vm_netmask')
         self.vm_network = config.get('vmware', 'vm_network')
-        self.rhel_subscription_user = config.get('vmware', 'rhel_subscription_user')
-        self.rhel_subscription_pass = config.get('vmware', 'rhel_subscription_pass')
-        self.rhel_subscription_server = config.get('vmware', 'rhel_subscription_server')
-        self.rhel_subscription_pool = config.get('vmware', 'rhel_subscription_pool')
-        self.rhsm_katello_url = config.get('vmware', 'rhsm_katello_url')
-        self.rhsm_activation_key = config.get('vmware', 'rhsm_activation_key')
-        self.rhsm_org_id = config.get('vmware', 'rhsm_org_id')
+        self.rhel_subscription_user = config.get(
+            'vmware', 'rhel_subscription_user')
+        self.rhel_subscription_pass = config.get(
+            'vmware', 'rhel_subscription_pass')
+        self.rhel_subscription_server = config.get(
+            'vmware', 'rhel_subscription_server')
+        self.rhel_subscription_pool = config.get(
+            'vmware', 'rhel_subscription_pool')
         self.openshift_sdn = config.get('vmware', 'openshift_sdn')
-        self.byo_lb = config.get('vmware', 'byo_lb')
-        self.lb_host = config.get('vmware', 'lb_host')
-        self.byo_nfs = config.get('vmware', 'byo_nfs')
-        self.nfs_host = config.get('vmware', 'nfs_host')
-        self.nfs_registry_mountpoint = config.get('vmware', 'nfs_registry_mountpoint')
-        self.master_nodes = config.get('vmware', 'master_nodes')
-        self.infra_nodes = config.get('vmware', 'infra_nodes')
-        self.app_nodes = config.get('vmware', 'app_nodes')
-        self.storage_nodes = config.get('vmware', 'storage_nodes')
-        self.vm_ipaddr_start = config.get('vmware', 'vm_ipaddr_start')
-        self.vm_ipaddr_allocation_type = config.get('vmware', 'vm_ipaddr_allocation_type')
+        self.compute_nodes = int(config.get('vmware', 'compute_nodes')) or 2
+        self.storage_nodes = int(config.get('vmware', 'storage_nodes')) or 3
         self.cns_automation_config_file_path = config.get(
             'vmware', 'cns_automation_config_file_path')
-        self.ocp_hostname_prefix = config.get('vmware', 'ocp_hostname_prefix') or ''
-        self.auth_type = config.get('vmware', 'auth_type')
-        self.ldap_user = config.get('vmware', 'ldap_user')
-        self.ldap_user_password = config.get('vmware', 'ldap_user_password')
-        self.ldap_fqdn = config.get('vmware', 'ldap_fqdn')
+        self.ocp_hostname_prefix = config.get(
+            'vmware', 'ocp_hostname_prefix') or 'ansible-on-vmware'
+        self.lb_host = '%s-master-0' % self.ocp_hostname_prefix
         self.openshift_disable_check = config.get(
             'vmware', 'openshift_disable_check').strip() or (
                 'docker_storage,docker_image_availability,disk_availability')
@@ -365,31 +324,23 @@ class VMWareAddNode(object):
                 err_count += 1
                 print ("Node number for CNS and CRS should be 3 or more.")
             if self.container_storage is None:
-                print "Please specify crs or cns in container_storage in the %s." % vmware_ini_path
+                err_count += 1
+                print ("Please specify crs or cns in container_storage in "
+                       "the %s." % vmware_ini_path)
             elif self.container_storage in ('cns', 'crs'):
-                self.inventory_file = "%s-inventory.json" % self.container_storage
+                self.inventory_file = (
+                    "%s-inventory.json" % self.container_storage)
         required_vars = {
             'cluster_id': self.cluster_id,
             'dns_zone': self.dns_zone,
             'vcenter_host': self.vcenter_host,
             'vcenter_password': self.vcenter_password,
-            'vm_ipaddr_start': self.vm_ipaddr_start,
-            'vm_ipaddr_allocation_type': self.vm_ipaddr_allocation_type,
-            'ldap_fqdn': self.ldap_fqdn,
-            'ldap_user_password': self.ldap_user_password,
-            'vm_dns': self.vm_dns,
-            'vm_gw': self.vm_gw,
-            'vm_netmask': self.vm_netmask,
             'vcenter_datacenter':self.vcenter_datacenter,
         }
         for k, v in required_vars.items():
             if v == '':
                 err_count += 1
                 print "Missing %s " % k
-        if required_vars['vm_ipaddr_allocation_type'] not in ('dhcp', 'static'):
-            err_count += 1
-            print ("'vm_ipaddr_allocation_type' can take only "
-                   "'dhcp' and 'static' values.")
         if not (self.container_storage_disks and
                 re.search(r'^[0-9]*(,[0-9]*)*$',
                           self.container_storage_disks)):
@@ -488,77 +439,46 @@ class VMWareAddNode(object):
 
 
     def create_inventory_file(self):
-
         if not self.args.no_confirm:
-            if not click.confirm('Continue creating the inventory file with these values?'):
+            if not click.confirm(
+                    'Continue creating the inventory file with these values?'):
                 sys.exit(0)
-        if self.byo_nfs == "False":
-            self.support_nodes=self.support_nodes+1
-        if self.byo_lb == "False":
-            self.support_nodes=self.support_nodes+1
 
-        total_nodes=int(self.master_nodes)+int(self.app_nodes)+int(self.infra_nodes)+int(self.support_nodes)+int(self.storage_nodes)+int(self.node_number)
-        nodes_remove=int(self.master_nodes)+int(self.app_nodes)+int(self.infra_nodes)+int(self.support_nodes)+int(self.storage_nodes)
-
-        ip4addr = []
-        for i in range(total_nodes):
-            p = iptools.ipv4.ip2long(self.vm_ipaddr_start) + i
-            ip4addr.append(iptools.ipv4.long2ip(p))
-
-        unusedip4addr = []
+        d = {'host_inventory': {}}
         for i in range(0, int(self.node_number)):
-            unusedip4addr.insert(0, ip4addr.pop())
-        d = {}
-        d['host_inventory'] = {}
-        for i in range(0, int(self.node_number)):
-            #determine node_number increment on the number of nodes 
-            if self.node_type == 'app':
-                node_ip = int(self.app_nodes) + i
-                guest_name = self.node_type + '-' + str(node_ip)
-                guest_type = 'app'
-            if self.node_type == 'infra':
-                node_ip = int(self.infra_nodes) + i
-                guest_name = self.node_type + '-' + str(node_ip)
-                guest_type = 'infra'
-            if self.node_type == 'storage' and self.container_storage == 'crs':
-                node_ip = int(self.storage_nodes) + i
-                guest_name = 'crs-' + str(node_ip)
-                guest_type = 'crs'
-            if self.node_type == 'storage' and self.container_storage == 'cns':
-                node_ip =  int(self.storage_nodes) + i
-                guest_name = 'app-cns-' + str(node_ip)
-                guest_type = 'cns'
+            # Determine node_number increment on the number of nodes 
+            if self.node_type == 'compute':
+                guest_name = '%s-%s' % (self.node_type, i)
+                guest_type = 'compute'
+            elif (self.node_type == 'storage' and
+                    self.container_storage == 'crs'):
+                guest_name = '%s-%s' % (self.container_storage, i)
+                guest_type = self.container_storage
+            elif (self.node_type == 'storage' and
+                    self.container_storage == 'cns'):
+                guest_name = '%s-%s' % (self.container_storage, i)
+                guest_type = self.container_storage
+            else:
+                raise Exception(
+                    "Unexpected combination of 'node_type' (%s) and "
+                    "'container_storage' (%s)." % (
+                        self.node_type, self.container_storage))
             if self.ocp_hostname_prefix:
                 guest_name = "%s-%s" % (self.ocp_hostname_prefix, guest_name)
-            d['host_inventory'][guest_name] = {}
-            d['host_inventory'][guest_name]['guestname'] = guest_name
-            d['host_inventory'][guest_name]['guesttype'] = guest_type
-            d['host_inventory'][guest_name]['vm_ipaddr_allocation_type'] = (
-                self.vm_ipaddr_allocation_type)
-            d['host_inventory'][guest_name]['ip4addr'] = unusedip4addr[0]
-
-            if self.vm_ipaddr_allocation_type == 'dhcp':
-                # NOTE(vponomar): following will be replaced dynamically in
-                #                 playbook when DHCP is used.
-                storage_address = '__%s__' % guest_name
-            else:
-                storage_address = unusedip4addr[0]
-            del unusedip4addr[0]
-
-            d['host_inventory'][guest_name]['tag'] = str(self.cluster_id) + '-' + self.node_type
+            d['host_inventory'][guest_name] = {
+                'guestname': guest_name,
+                'guesttype': guest_type,
+                'tag': str(self.cluster_id) + '-' + self.node_type,
+            }
+            # NOTE(vponomar): following will be replaced automatically in
+            #                 playbooks.
+            storage_address = '__%s__' % guest_name
 
         with open(self.inventory_file, 'w') as outfile:
             json.dump(d, outfile, indent=4, sort_keys=True)
-
         print 'Inventory file created: %s' % self.inventory_file
 
-        if self.byo_lb == "False" and int(self.master_nodes) > 1:
-            self.lb_host = "%s-%s" % (self.ocp_hostname_prefix, self.lb_host)
-        else:
-            self.lb_host = "%s-master-0" % self.ocp_hostname_prefix
-
     def launch_refarch_env(self):
-
         with open(self.inventory_file, 'r') as f:
             print yaml.safe_dump(json.load(f), default_flow_style=False)
 
@@ -566,7 +486,8 @@ class VMWareAddNode(object):
             if not click.confirm('Continue adding nodes with these values?'):
                 sys.exit(0)
 
-        if self.container_storage in ('cns', 'crs') and 'storage' in self.node_type:
+        if (self.container_storage in ('cns', 'crs') and
+                'storage' in self.node_type):
             if 'None' in self.tag:
                 # do the full install and config minus the cleanup
                 self.tag = 'vms,node-setup'
@@ -590,20 +511,18 @@ class VMWareAddNode(object):
             'vcenter_datacenter': self.vcenter_datacenter,
             'vcenter_resource_pool': self.vcenter_resource_pool,
             'dns_zone': self.dns_zone,
-            'app_dns_prefix': self.app_dns_prefix,
-            'vm_dns': self.vm_dns,
-            'vm_gw': self.vm_gw,
-            'vm_netmask': self.vm_netmask,
-            'vm_network': self.vm_network,
-            'vm_ipaddr_allocation_type': self.vm_ipaddr_allocation_type,
-            'cns_automation_config_file_path': self.cns_automation_config_file_path,
             'wildcard_zone': self.wildcard_zone,
+            'app_dns_prefix': self.app_dns_prefix,
+            'vm_network': self.vm_network,
+            'cns_automation_config_file_path': (
+                self.cns_automation_config_file_path),
             'console_port': self.console_port,
             'cluster_id': self.cluster_id,
             'container_storage': self.container_storage,
             'container_storage_disks': self.container_storage_disks,
             'container_storage_disk_type': self.container_storage_disk_type,
-            'additional_disks_to_storage_nodes': self.additional_disks_to_storage_nodes,
+            'additional_disks_to_storage_nodes': (
+                self.additional_disks_to_storage_nodes),
             'dp_tool_heketi_admin_key': self.heketi_admin_key,
             'dp_tool_heketi_user_key': self.heketi_user_key,
             'ose_puddle_repo': self.ose_puddle_repo,
@@ -617,24 +536,20 @@ class VMWareAddNode(object):
             'rhel_subscription_pass': self.rhel_subscription_pass,
             'rhsm_satellite': self.rhel_subscription_server,
             'rhsm_pool': self.rhel_subscription_pool,
-            'rhsm_katello_url': self.rhsm_katello_url,
-            'rhsm_activation_key': self.rhsm_activation_key,
-            'rhsm_org_id': self.rhsm_org_id,
             'openshift_sdn': self.openshift_sdn,
             'openshift_use_openshift_sdn': True,
             'lb_host': self.lb_host,
             'node_type': self.node_type,
             'ocp_hostname_prefix': self.ocp_hostname_prefix,
-            'nfs_host': self.nfs_host,
-            'nfs_registry_mountpoint': self.nfs_registry_mountpoint,
             'disable_yum_update_and_reboot': self.disable_yum_update_and_reboot
         }
         if self.openshift_disable_check_data:
             playbook_vars_dict["openshift_disable_check"] = (
                 ','.join(self.openshift_disable_check_data))
         if self.container_storage_block_hosting_volume_size:
-            playbook_vars_dict['openshift_storage_glusterfs_block_host_vol_size'] = (
-                self.container_storage_block_hosting_volume_size)
+            playbook_vars_dict[
+                'openshift_storage_glusterfs_block_host_vol_size'] = (
+                    self.container_storage_block_hosting_volume_size)
         if self.container_storage_glusterfs_timeout:
             playbook_vars_dict['openshift_storage_glusterfs_timeout'] = (
                 self.container_storage_glusterfs_timeout)
@@ -661,16 +576,23 @@ class VMWareAddNode(object):
         elif self.openshift_vers != "v3_9":
             if self.cns_glusterfs_version:
                 playbook_vars_dict['openshift_storage_glusterfs_image'] = (
-                    "%s:%s" % (self.cns_glusterfs_image or 'rhgs3/rhgs-server-rhel7',
-                               self.cns_glusterfs_version))
+                    "%s:%s" % (
+                        self.cns_glusterfs_image or 'rhgs3/rhgs-server-rhel7',
+                        self.cns_glusterfs_version))
             if self.cns_glusterfs_block_version:
-                playbook_vars_dict['openshift_storage_glusterfs_block_image'] = (
-                    "%s:%s" % (self.cns_glusterfs_block_image or 'rhgs3/rhgs-gluster-block-prov-rhel7',
-                               self.cns_glusterfs_block_version))
+                playbook_vars_dict[
+                    'openshift_storage_glusterfs_block_image'] = (
+                        "%s:%s" % (
+                            self.cns_glusterfs_block_image or
+                            'rhgs3/rhgs-gluster-block-prov-rhel7',
+                            self.cns_glusterfs_block_version))
             if self.cns_glusterfs_heketi_version:
-                playbook_vars_dict['openshift_storage_glusterfs_heketi_image'] = (
-                    "%s:%s" % (self.cns_glusterfs_heketi_image or 'rhgs3/rhgs-volmanager-rhel7',
-                               self.cns_glusterfs_heketi_version))
+                playbook_vars_dict[
+                        'openshift_storage_glusterfs_heketi_image'] = (
+                    "%s:%s" % (
+                        self.cns_glusterfs_heketi_image or
+                        'rhgs3/rhgs-volmanager-rhel7',
+                        self.cns_glusterfs_heketi_version))
 
         playbook_vars_str = ' '.join('%s=%s' % (k, v)
                                      for (k, v) in playbook_vars_dict.items())
@@ -702,9 +624,11 @@ class VMWareAddNode(object):
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) != 0:
                 sys.exit(os.WEXITSTATUS(status))
 
-        command = "ansible-playbook -i %smaster-0, playbooks/get_ocp_info.yaml" % (
-            "%s-" % self.ocp_hostname_prefix
-            if self.ocp_hostname_prefix else "")
+        command = (
+            "ansible-playbook "
+            "-i %smaster-0, playbooks/get_ocp_info.yaml") % (
+                "%s-" % self.ocp_hostname_prefix
+                if self.ocp_hostname_prefix else "")
         os.system(command)
 
         print "Successful run!"
@@ -714,6 +638,7 @@ class VMWareAddNode(object):
             print "Removing the existing %s file" % self.inventory_file
             os.remove(self.inventory_file)
         sys.exit(0)
+
 
 if __name__ == '__main__':
     VMWareAddNode()

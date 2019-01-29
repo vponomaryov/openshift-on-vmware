@@ -1,5 +1,6 @@
 ---
-# create rhsm_user, rhsm_password, rhsm_subscription_pool and rhsm_server for functionality with older rhsm_user
+# create rhsm_user, rhsm_password, rhsm_subscription_pool and
+# rhsm_server for functionality with older rhsm_user
 - name: Set deprecated fact for rhel_subscription_user
   set_fact:
     rhsm_user: "{{ rhel_subscription_user }}"
@@ -27,10 +28,10 @@
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes, masters, etcd, nodes, cluster_hosts, master
+    openshift_node_group_name: "node-config-master"
     openshift_node_labels:
       role: master
       node-role.kubernetes.io/master: true
-    openshift_node_group_name: "node-config-master"
   with_items: "{{ groups[cluster_id + '-master'] }}"
   when:
     - "openshift_vers in ['v3_6', 'v3_7', 'v3_9', 'v3_10']"
@@ -47,54 +48,32 @@
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
     groups: single_master
+    openshift_node_group_name: "node-config-master"
     openshift_node_labels:
       role: master
       node-role.kubernetes.io/master: true
-    openshift_node_group_name: "node-config-master"
   with_items: "{{ groups[cluster_id + '-master'][0] }}"
   when:
     - "openshift_vers in ['v3_6', 'v3_7', 'v3_9', 'v3_10']"
 
-- name: Add infra instances to host group
+- name: Add compute instances to host group
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
-    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, infra
-    openshift_node_group_name: "node-config-compute-and-infra"
-  with_items: "{{ groups[cluster_id + '-infra'] | default([]) }}"
+    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, compute
+    openshift_node_group_name: "node-config-compute"
+  with_items: "{{ groups[cluster_id + '-compute'] }}"
   when:
     - "openshift_vers not in ['v3_6', 'v3_7', 'v3_9', 'v3_10']"
-- name: Add infra instances to host group
+- name: Add compute instances to host group
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
-    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, infra
+    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, compute
+    openshift_node_group_name: "node-config-compute"
     openshift_node_labels:
-      role: infra
-      node-role.kubernetes.io/infra: true
-    openshift_node_group_name: "node-config-compute-and-infra"
-  with_items: "{{ groups[cluster_id + '-infra'] | default([]) }}"
-  when:
-    - "openshift_vers in ['v3_6', 'v3_7', 'v3_9', 'v3_10']"
-
-- name: Add app instances to host group
-  add_host:
-    name: "{{ hostvars[item].inventory_hostname }}"
-    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, app
-    openshift_node_group_name: "node-config-compute-and-infra"
-  with_items: "{{ groups[cluster_id + '-app'] }}"
-  when:
-    - "openshift_vers not in ['v3_6', 'v3_7', 'v3_9', 'v3_10']"
-- name: Add app instances to host group
-  add_host:
-    name: "{{ hostvars[item].inventory_hostname }}"
-    groups: allnodes, nodes, cluster_hosts, schedulable_nodes, app
-    openshift_node_labels:
-      role: app
+      role: compute
       node-role.kubernetes.io/compute: true
-      # NOTE(vponomar): we add 'infra' selector too, while we do not allow to
-      # install separate infra nodes.
       node-role.kubernetes.io/infra: true
-    openshift_node_group_name: "node-config-compute-and-infra"
-  with_items: "{{ groups[cluster_id + '-app'] }}"
+  with_items: "{{ groups[cluster_id + '-compute'] }}"
   when:
     - "openshift_vers in ['v3_6', 'v3_7', 'v3_9', 'v3_10']"
 
@@ -102,9 +81,7 @@
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes, new_nodes
-    # NOTE(vponomar): following is hardcoded,
-    # because we support addon only of compute/infra nodes.
-    openshift_node_group_name: "node-config-compute-and-infra"
+    openshift_node_group_name: "node-config-compute"
   with_items: "{{ groups.tag_provision_node | default([]) }}"
   when:
     - add_node is defined
@@ -113,15 +90,11 @@
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
     groups: allnodes, new_nodes
+    openshift_node_group_name: "node-config-compute"
     openshift_node_labels:
       role: "{{ node_type }}"
-      # TODO(vponomar): Rework it when we support any type of nodes to
-      # be added to an existing cluster.
       node-role.kubernetes.io/compute: true
       node-role.kubernetes.io/infra: true
-    # NOTE(vponomar): following is hardcoded,
-    # because we support addon only of compute/infra nodes.
-    openshift_node_group_name: "node-config-compute-and-infra"
   with_items: "{{ groups.tag_provision_node | default([]) }}"
   when:
     - add_node is defined
@@ -144,7 +117,7 @@
 - name: Add cns instances to host group
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
-    groups: nodes, cluster_hosts, schedulable_nodes
+    groups: nodes, cluster_hosts, schedulable_nodes, storage
     openshift_node_group_name: "node-config-storage"
   with_items: "{{ groups[cluster_id + '-storage'] }}"
   when:
@@ -153,7 +126,7 @@
 - name: Add cns instances to host group
   add_host:
     name: "{{ hostvars[item].inventory_hostname }}"
-    groups: nodes, cluster_hosts, schedulable_nodes
+    groups: nodes, cluster_hosts, schedulable_nodes, storage
     openshift_node_labels:
       role: storage
       node-role.kubernetes.io/storage: true

@@ -35,23 +35,11 @@
         - 'node-role.kubernetes.io/master=true'
         - 'role=master'
         edits: []
-      - name: node-config-infra
-        labels:
-        - 'node-role.kubernetes.io/infra=true'
-        - 'role=infra'
-        edits: []
       - name: node-config-compute
         labels:
         - 'node-role.kubernetes.io/compute=true'
-        - 'role=app'
-        edits: []
-      - name: node-config-compute-and-infra
-        labels:
-        - 'node-role.kubernetes.io/compute=true'
         - 'node-role.kubernetes.io/infra=true'
-        - 'node-role.kubernetes.io/compute=true,node-role.kubernetes.io/infra=true'
-        - 'role=infra'
-        - 'role=app'
+        - 'role=compute'
         edits: []
       - name: node-config-storage
         labels:
@@ -77,7 +65,7 @@
   when: openshift_vers not in ['v3_6', 'v3_7']
 
 - name: Map domain names and IP addresses of old and new nodes to each other
-  hosts: master, infra, app, cns, crs, !new_nodes
+  hosts: master, compute, cns, crs, !new_nodes
   vars_files:
     - vars/main.yaml
   roles:

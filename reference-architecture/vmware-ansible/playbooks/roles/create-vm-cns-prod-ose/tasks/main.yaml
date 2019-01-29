@@ -1,25 +1,4 @@
 ---
-- name: Define DHCP network parameters per node
-  set_fact:
-    network_parameters: "{{ network_parameters | default({}) |
-                            combine({item.value.guestname: {
-                                'name': vm_network,
-                                'type': vm_ipaddr_allocation_type,
-                                'gateway': vm_gw}}, recursive=True) }}"
-  with_dict: "{{ host_inventory }}"
-  when: "item.value.guesttype in ['cns', ]"
-
-- name: Define static network parameters per node
-  set_fact:
-    network_parameters: "{{ network_parameters |
-                            combine({item.value.guestname: {
-                                'ip': item.value.ip4addr,
-                                'netmask': vm_netmask}}, recursive=True) }}"
-  with_dict: "{{ host_inventory }}"
-  when:
-  - "'static' == vm_ipaddr_allocation_type"
-  - "item.value.guesttype in ['cns', ]"
-
 - name: Define set of main disks (system and heketi)
   set_fact:
     disks_info: "{{ disks_info | default([
@@ -60,16 +39,14 @@
     disk: "{{ disks_info }} + {{ additional_disks_info }}"
     hardware:
       memory_mb: 32768
-    networks: "[ {{ network_parameters[item.value.guestname] }} ]"
+    networks: "[{'name': '{{ vm_network }}', 'type': 'dhcp' }]"
     customization:
       domain: "{{dns_zone}}"
-      dns_servers:
-      - "{{ vm_dns }}"
       dns_suffix: "{{dns_zone}}"
       hostname: "{{ item.value.guestname}}"
   with_dict: "{{host_inventory}}"
   when: "item.value.guesttype in ['cns', ]"
-  async: "{{ (network_parameters | length) * 600 }}"
+  async: "{{ 6 * 600 }}"
   poll: 0
   register: async_vms_creation
 
@@ -81,7 +58,7 @@
     loop_var: "async_result_item"
   register: async_poll_results
   until: async_poll_results.finished
-  retries: "{{ (network_parameters | length) * 100 }}"
+  retries: "{{ 6 * 100 }}"
 
 - name: Read info of newly created VMs
   vmware_guest_tools_wait:
@@ -137,9 +114,9 @@
   when: "item.value.guesttype in ['cns', ]"
 
 # Following updates config file
-# which is required for automated tests from 'cns-automation' repo
+# which is required for automated tests from 'glusterfs-containers-tests' repo
 
-- name: Combine data about gluster servers for 'cns-automation' config file
+- name: Combine data about gluster servers for 'glusterfs-containers-tests' config file
   set_fact:
     gluster_servers: "{{
         gluster_servers | default({}) | combine({
@@ -155,7 +132,7 @@
   - item.value.guesttype in ['cns', ]
   - cns_automation_config_file_path | length > 0
 
-- name: Update 'cns-automation' config file
+- name: Update 'glusterfs-containers-tests' config file
   yedit:
     src: "{{ cns_automation_config_file_path }}"
     state: present

@@ -3,12 +3,6 @@
 openshift_master_cluster_hostname: "{{ lb_host }}"
 openshift_master_cluster_public_hostname: "{{ lb_host }}"
 console_port: 8443
-master_tag: master
-infra_tag: infra
-app_tag: app
-master_group_tag: "tag_openshift-role_{{ master_tag }}"
-app_group_tag: "tag_openshift-role_{{ app_tag }}"
-infra_group_tag: "tag_openshift-role_{{ infra_tag }}"
 openshift_vers: "{{ openshift_vers | default('v3_6')}}"
 openshift_major_version: "{{ openshift_vers.split('_')[-1] }}"
 openshift_ansible_branch: release-3.{{ openshift_major_version }}
@@ -24,23 +18,11 @@ openshift_node_groups:
   - 'node-role.kubernetes.io/master=true'
   - 'role=master'
   edits: []
-- name: node-config-infra
-  labels:
-    - 'node-role.kubernetes.io/infra=true'
-    - 'role=infra'
-  edits: []
 - name: node-config-compute
   labels:
     - 'node-role.kubernetes.io/compute=true'
-    - 'role=app'
-  edits: []
-- name: node-config-compute-and-infra
-  labels:
-    - 'node-role.kubernetes.io/compute=true'
     - 'node-role.kubernetes.io/infra=true'
-    - 'node-role.kubernetes.io/compute=true,node-role.kubernetes.io/infra=true'
-    - 'role=infra'
-    - 'role=app'
+    - 'role=compute'
   edits: []
 - name: node-config-storage
   labels:

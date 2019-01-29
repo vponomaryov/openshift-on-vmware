@@ -21,23 +21,11 @@
       - 'node-role.kubernetes.io/master=true'
       - 'role=master'
       edits: []
-    - name: node-config-infra
-      labels:
-      - 'node-role.kubernetes.io/infra=true'
-      - 'role=infra'
-      edits: []
     - name: node-config-compute
       labels:
       - 'node-role.kubernetes.io/compute=true'
-      - 'role=app'
-      edits: []
-    - name: node-config-compute-and-infra
-      labels:
-      - 'node-role.kubernetes.io/compute=true'
       - 'node-role.kubernetes.io/infra=true'
-      - 'node-role.kubernetes.io/compute=true,node-role.kubernetes.io/infra=true'
-      - 'role=infra'
-      - 'role=app'
+      - 'role=compute'
       edits: []
     - name: node-config-storage
       labels:
@@ -91,10 +79,10 @@
     openshift_node_local_quota_per_fsgroup: 512Mi
     osm_cluster_network_cidr: 172.16.0.0/16
     osm_use_cockpit: false
-    osm_default_node_selector: "role=app"
-    openshift_registry_selector: "role=app"
+    osm_default_node_selector: "role=compute"
+    openshift_registry_selector: "role=compute"
     openshift_override_hostname_check: true
-    openshift_router_selector: "role=app"
+    openshift_router_selector: "role=compute"
     openshift_master_cluster_method: native
     openshift_cloudprovider_kind: vsphere
     openshift_cloudprovider_vsphere_host: "{{ vcenter_host }}"
@@ -123,23 +111,11 @@
       - 'node-role.kubernetes.io/master=true'
       - 'role=master'
       edits: []
-    - name: node-config-infra
-      labels:
-      - 'node-role.kubernetes.io/infra=true'
-      - 'role=infra'
-      edits: []
     - name: node-config-compute
       labels:
       - 'node-role.kubernetes.io/compute=true'
-      - 'role=app'
-      edits: []
-    - name: node-config-compute-and-infra
-      labels:
-      - 'node-role.kubernetes.io/compute=true'
       - 'node-role.kubernetes.io/infra=true'
-      - 'node-role.kubernetes.io/compute=true,node-role.kubernetes.io/infra=true'
-      - 'role=infra'
-      - 'role=app'
+      - 'role=compute'
       edits: []
     - name: node-config-storage
       labels:
