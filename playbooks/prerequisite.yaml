@@ -1,32 +1,26 @@
 ---
-- hosts: nodes
+- hosts: cluster_hosts
   gather_facts: yes
   become: yes
+  vars_files:
+  - vars/main.yaml
   roles:
-  - rhsm-timeout
-  - role: atomic-update
-    when: (openshift.common.is_atomic | default(openshift_is_atomic))
+  - instance-groups
+  - package-repos
 
-- hosts: nodes
+- hosts: cluster_hosts
   gather_facts: no
-  become: yes
-  serial: 1
-  roles:
-  - role: rhsm-subscription
-    when: deployment_type in ["enterprise", "atomic-enterprise", "openshift-enterprise"] and
-          ansible_distribution == "RedHat" and ( rhsm_user is defined or rhsm_activation_key is defined)
-
-- hosts: nodes
-  gather_facts: no
+  vars_files:
+  - vars/main.yaml
   become: yes
   roles:
-  - role: rhsm-repos
-    when: deployment_type in ["enterprise", "atomic-enterprise", "openshift-enterprise"] and
-          ansible_distribution == "RedHat" and ( rhsm_user is defined or rhsm_activation_key is defined)
   - prerequisites
 
-- hosts: masters
+- hosts: master
   gather_facts: yes
+  vars_files:
+  - vars/main.yaml
   become: yes
   roles:
   - master-prerequisites
+  - etcd-storage
