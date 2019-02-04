@@ -110,12 +110,12 @@ class VMWareAddNode(object):
         if 'compute' in self.node_type:
             self.compute_nodes = (
                 int(self.compute_nodes) + int(self.node_number))
-            config.set('vmware', 'compute_nodes', self.compute_nodes)
+            config.set('vmware', 'compute_nodes', str(self.compute_nodes))
             print "Updating %s file with %s compute_nodes" % (
                 vmware_ini_path, self.compute_nodes)
         if 'storage' in self.node_type:
             self.storage_nodes = int(self.storage_nodes) or 3
-            config.set('vmware', 'storage_nodes', self.storage_nodes)
+            config.set('vmware', 'storage_nodes', str(self.storage_nodes))
             print "Updating %s file with %s storage_nodes" % (
                 vmware_ini_path, self.storage_nodes)
 
