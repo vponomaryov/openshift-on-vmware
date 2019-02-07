@@ -17,8 +17,6 @@
 .tags*
 add-node.json
 infrastructure.json
-cns-automation-config*.yaml
-ocp-on-vmware*.ini*
 *.log
 .tox
 *.retry
